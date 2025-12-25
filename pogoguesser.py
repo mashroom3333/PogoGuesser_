@@ -204,6 +204,11 @@ def get_ans_scaled(x, y, mapimg, scale):
 
     return image
 
+def image_to_screen(img_x, img_y, center_x, center_y, scale):
+    screen_w,screen_h = SCREEN_SIZE
+    screen_x = (img_x - center_x) * scale + screen_w / 2
+    screen_y = (img_y - center_y) * scale + screen_h / 2
+    return screen_x, screen_y
 
 
 def main():
@@ -419,18 +424,11 @@ def main():
                 draw_player_y = int(player_ans_y * ratio + offset_y)
 
                 # 正解の円
-                screen.blit(pogo_king,(draw_ans_x - 20,draw_ans_y - 20))
-                screen.blit(flag_img,(draw_player_x - 20,draw_player_y - 20))
-                pygame.draw.circle(screen, (255, 0, 0), (draw_ans_x, draw_ans_y), 5)
-                pygame.draw.circle(screen, (0, 0, 255), (draw_player_x, draw_player_y), 5)
-
-                # 距離の計算（元の座標単位で計算する場合）
+                distance = math.hypot(dx, dy)
+                distane_arr.append(distance)
 
                 dx = max(abs(ans_x - player_ans_x), 1)
                 dy = max(abs(ans_y - player_ans_y), 1)
-
-                distance = math.hypot(dx, dy)
-                distane_arr.append(distance)
                 
                 scale_x = screen_w / dx
                 scale_y = screen_h / dy
@@ -439,6 +437,14 @@ def main():
                 
                 midle_x = (ans_x + player_ans_x) // 2
                 midle_y = (ans_y + player_ans_y) // 2
+
+                pogoking_x,pogoking_y = image_to_screen(ans_x,ans_y,midle_x,midle_y,scale2)
+                flag_x,flag_y = image_to_screen(player_ans_x,player_ans_y,midle_x,midle_y,scale2)
+                pygame.draw.line(screen, (255,255,255),(pogoking_x,pogoking_y),(flag_x,flag_y),3)
+                screen.blit(pogo_king,(pogoking_x - 20,pogoking_y - 20))
+                screen.blit(flag_img,(flag_x - 20,flag_y - 20))
+                pygame.draw.circle(screen, (255, 0, 0), (draw_ans_x, draw_ans_y), 5)
+                pygame.draw.circle(screen, (0, 0, 255), (draw_player_x, draw_player_y), 5)
 
                 if(show_result_surface == None):
                     show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg_4guess,scale2)
