@@ -160,7 +160,6 @@ def check_can_telepote(mx,my,mask):
         if not mask.get_at((mx, my)):
             return True
 
-
     
 def set_position(x,y,mapimg_4guess,map):
     if(map == 1):
@@ -187,25 +186,25 @@ def set_position(x,y,mapimg_4guess,map):
 
     return image_scaled_2,mask_4guess,rect_4guess
 
+def get_ans_scaled(x, y, mapimg, scale):
+    src_w = int(SCREEN_SIZE[0] / scale)
+    src_h = int(SCREEN_SIZE[1] / scale)
 
-def get_ans_scaled(x,y,mapimg_4guess,scale):
-        
-    src_w = int(1920 / scale)
-    src_h = int(1080 / scale)
+    left = x - src_w // 2
+    top  = y - src_h // 2
+    right = src_w
+    bottom = src_h
 
-    src_rect = pygame.Rect(
-        x - src_w // 2,
-        y - src_h // 2,
-        src_w,
-        src_h
-    )
-    src_rect.clamp_ip(mapimg_4guess.get_rect())
-    sub = mapimg_4guess.subsurface(src_rect)
-    image_scaled_2 = pygame.transform.smoothscale(sub,(1920,1080))
-    mask_4guess = pygame.mask.from_surface(image_scaled_2)
-    rect_4guess = mask_4guess.get_rect()
+    src_rect = pygame.Rect(left, top,right,bottom)
+    sub = mapimg.subsurface(src_rect)
+    image = pygame.transform.smoothscale(sub, (SCREEN_SIZE[0], SCREEN_SIZE[1]))
+    src_rect.clamp_ip(mapimg.get_rect())
+    sub = mapimg.subsurface(src_rect)
+    image = pygame.transform.smoothscale(sub,(1920,1080))
 
-    return image_scaled_2,mask_4guess,rect_4guess
+    return image
+
+
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
@@ -427,27 +426,24 @@ def main():
                 pygame.draw.circle(screen, (0, 0, 255), (draw_player_x, draw_player_y), 5)
 
                 # 距離の計算（元の座標単位で計算する場合）
-                dx = player_ans_x - ans_x
-                dy = player_ans_y - ans_y
+
+                dx = max(abs(ans_x - player_ans_x), 1)
+                dy = max(abs(ans_y - player_ans_y), 1)
+
                 distance = math.hypot(dx, dy)
                 distane_arr.append(distance)
                 
-                min_x = min(ans_x,player_ans_x)
-                max_x = max(ans_x,player_ans_x)
-                min_y = min(ans_y,player_ans_y)
-                max_y = max(ans_y,player_ans_y)
-
-                midle_x = (min_x + max_x) //2
-                midle_y = (min_y + max_y) //2
-
-                scale_x = screen_w / (max_x - min_x)
-                scale_y = screen_h / (max_y - min_y)
-
+                scale_x = screen_w / dx
+                scale_y = screen_h / dy
                 scale = min(scale_x, scale_y)
-                print(scale)
+                scale = min(scale, 10)
+                
+                midle_x = (ans_x + player_ans_x) // 2
+                midle_y = (ans_y + player_ans_y) // 2
 
-                show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg_4guess,scale)
-                screen.blit(show_result_surface[0], (-1 * (screen_w / 2), -1 * (screen_h /2)))
+                if(show_result_surface == None):
+                    show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg_4guess,scale)
+                screen.blit(show_result_surface,(0,0) )
 
                 correct = False
                 if((map == 1 or map == 3) and distance < 100):
@@ -535,6 +531,7 @@ def main():
                         ans_x,ans_y = set_ans()
                         zoom_counter =1
                     answer_correct = True
+                    show_result_surface = None
 
             if(current_mode == 1):#マップモード
                 # ===== ズーム（画面中心固定）=====
