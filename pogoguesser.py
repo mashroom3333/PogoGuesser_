@@ -188,6 +188,24 @@ def set_position(x,y,mapimg_4guess,map):
     return image_scaled_2,mask_4guess,rect_4guess
 
 
+def get_ans_scaled(x,y,mapimg_4guess,scale):
+        
+    src_w = int(1920 / scale)
+    src_h = int(1080 / scale)
+
+    src_rect = pygame.Rect(
+        x - src_w // 2,
+        y - src_h // 2,
+        src_w,
+        src_h
+    )
+    src_rect.clamp_ip(mapimg_4guess.get_rect())
+    sub = mapimg_4guess.subsurface(src_rect)
+    image_scaled_2 = pygame.transform.smoothscale(sub,(1920,1080))
+    mask_4guess = pygame.mask.from_surface(image_scaled_2)
+    rect_4guess = mask_4guess.get_rect()
+
+    return image_scaled_2,mask_4guess,rect_4guess
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
@@ -285,6 +303,7 @@ def main():
     choseable_area_1 = None
     choseable_area_2 = None
     choseable_area_3 = None
+    show_result_surface = None
 
     while True:
         clock.tick(60)
@@ -391,13 +410,10 @@ def main():
                 offset_x = (screen_w - new_w) // 2
                 offset_y = (screen_h - new_h) // 2
 
-                # 3. 描画
                 screen.fill((0, 0, 0))
                 image_scaled = pygame.transform.smoothscale(mapimg, (new_w, new_h))
                 screen.blit(image_scaled, (offset_x, offset_y))
 
-                # 4. 座標の計算と円の描画
-                # 元の座標をスケーリングし、中央寄せのオフセットを加える
                 draw_ans_x = int(ans_x * ratio + offset_x)
                 draw_ans_y = int(ans_y * ratio + offset_y)
                 
@@ -415,6 +431,23 @@ def main():
                 dy = player_ans_y - ans_y
                 distance = math.hypot(dx, dy)
                 distane_arr.append(distance)
+                
+                min_x = min(ans_x,player_ans_x)
+                max_x = max(ans_x,player_ans_x)
+                min_y = min(ans_y,player_ans_y)
+                max_y = max(ans_y,player_ans_y)
+
+                midle_x = (min_x + max_x) //2
+                midle_y = (min_y + max_y) //2
+
+                scale_x = screen_w / (max_x - min_x)
+                scale_y = screen_h / (max_y - min_y)
+
+                scale = min(scale_x, scale_y)
+                print(scale)
+
+                show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg_4guess,scale)
+                screen.blit(show_result_surface[0], (-1 * (screen_w / 2), -1 * (screen_h /2)))
 
                 correct = False
                 if((map == 1 or map == 3) and distance < 100):
@@ -544,6 +577,7 @@ def main():
                     
                     original_x = (mx - img_x) / final_scale
                     original_y = (my - img_y) / final_scale
+
 
                     print(f"元画像座標:({original_x:.1f},{original_y:.1f})")
                     position_was_changed = 1
