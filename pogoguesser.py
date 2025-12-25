@@ -205,6 +205,7 @@ def get_ans_scaled(x, y, mapimg, scale):
     return image
 
 
+
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
@@ -410,8 +411,6 @@ def main():
                 offset_y = (screen_h - new_h) // 2
 
                 screen.fill((0, 0, 0))
-                image_scaled = pygame.transform.smoothscale(mapimg, (new_w, new_h))
-                screen.blit(image_scaled, (offset_x, offset_y))
 
                 draw_ans_x = int(ans_x * ratio + offset_x)
                 draw_ans_y = int(ans_y * ratio + offset_y)
@@ -435,14 +434,14 @@ def main():
                 
                 scale_x = screen_w / dx
                 scale_y = screen_h / dy
-                scale = min(scale_x, scale_y)
-                scale = min(scale, 10)
+                scale2 = min(scale_x, scale_y)
+                scale2 = min(scale2, 3)
                 
                 midle_x = (ans_x + player_ans_x) // 2
                 midle_y = (ans_y + player_ans_y) // 2
 
                 if(show_result_surface == None):
-                    show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg_4guess,scale)
+                    show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg_4guess,scale2)
                 screen.blit(show_result_surface,(0,0) )
 
                 correct = False
