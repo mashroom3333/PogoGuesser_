@@ -196,11 +196,10 @@ def get_ans_scaled(x, y, mapimg, scale):
     bottom = src_h
 
     src_rect = pygame.Rect(left, top,right,bottom)
+    src_rect.clamp_ip(mapimg.get_rect())
+
     sub = mapimg.subsurface(src_rect)
     image = pygame.transform.smoothscale(sub, (SCREEN_SIZE[0], SCREEN_SIZE[1]))
-    src_rect.clamp_ip(mapimg.get_rect())
-    sub = mapimg.subsurface(src_rect)
-    image = pygame.transform.smoothscale(sub,(1920,1080))
 
     return image
 
@@ -209,6 +208,12 @@ def image_to_screen(img_x, img_y, center_x, center_y, scale):
     screen_x = (img_x - center_x) * scale + screen_w / 2
     screen_y = (img_y - center_y) * scale + screen_h / 2
     return screen_x, screen_y
+
+def screen_to_image(screen_x, screen_y, center_x, center_y, scale):
+    screen_w, screen_h = SCREEN_SIZE
+    img_x = (screen_x - screen_w / 2) / scale + center_x
+    img_y = (screen_y - screen_h / 2) / scale + center_y
+    return img_x, img_y
 
 
 def main():
@@ -399,7 +404,7 @@ def main():
                 screen.blit(t3,[0,SCREEN_SIZE[1]-120])
                 screen.blit(t4,[0,SCREEN_SIZE[1]-60])
 
-            if(current_mode == 2): # 正解発表
+            if(current_mode == 2): # 正解発表==========================================
                 screen.fill((0,0,0))
 
                 screen_w, screen_h = SCREEN_SIZE
@@ -411,55 +416,66 @@ def main():
                 new_w = int(img_orig_w * ratio)
                 new_h = int(img_orig_h * ratio)
 
-                # 2. 中央に配置するためのオフセット計算
-                offset_x = (screen_w - new_w) // 2
-                offset_y = (screen_h - new_h) // 2
-
                 screen.fill((0, 0, 0))
+                #dx = max(abs(ans_x - player_ans_x), 1)
+                #dy = max(abs(ans_y - player_ans_y), 1)
 
-                draw_ans_x = int(ans_x * ratio + offset_x)
-                draw_ans_y = int(ans_y * ratio + offset_y)
+                #distance = math.hypot(dx, dy)
+                #distane_arr.append(distance)
+
                 
-                draw_player_x = int(player_ans_x * ratio + offset_x)
-                draw_player_y = int(player_ans_y * ratio + offset_y)
+                #scale_x = screen_w / dx
+                #scale_y = screen_h / dy
+                #scale2 = min(scale_x, scale_y)
+                #scale2 = min(scale2, 3)
+                
+                #midle_x = (ans_x + player_ans_x) // 2
+                #midle_y = (ans_y + player_ans_y) // 2
 
-                # 正解の円
-                distance = math.hypot(dx, dy)
-                distane_arr.append(distance)
+# ... (前略) ...
 
                 dx = max(abs(ans_x - player_ans_x), 1)
                 dy = max(abs(ans_y - player_ans_y), 1)
+
+                distance = math.hypot(dx, dy)
+                distane_arr.append(distance)
+
+                # --- 修正箇所: ここでマージンを設定します ---
+                margin = 400 # 画面全体の余白（合計値）。例えば左右に200pxずつ空けたいなら400
                 
-                scale_x = screen_w / dx
-                scale_y = screen_h / dy
+                # 画面サイズからマージンを引いた「有効範囲」で倍率を計算する
+                # これにより、両端に余白が生まれます
+                scale_x = (screen_w - margin) / dx
+                scale_y = (screen_h - margin) / dy
+                
                 scale2 = min(scale_x, scale_y)
-                scale2 = min(scale2, 3)
-                
+                scale2 = min(scale2, 4) # 最大ズーム倍率の制限
+                # ----------------------------------------
+
                 midle_x = (ans_x + player_ans_x) // 2
                 midle_y = (ans_y + player_ans_y) // 2
-
+                
+                # ... (後略) ...
                 pogoking_x,pogoking_y = image_to_screen(ans_x,ans_y,midle_x,midle_y,scale2)
                 flag_x,flag_y = image_to_screen(player_ans_x,player_ans_y,midle_x,midle_y,scale2)
+
+                if(show_result_surface == None):
+                    show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg,scale2)
+                screen.blit(show_result_surface,(0,0) )
                 pygame.draw.line(screen, (255,255,255),(pogoking_x,pogoking_y),(flag_x,flag_y),3)
                 screen.blit(pogo_king,(pogoking_x - 20,pogoking_y - 20))
                 screen.blit(flag_img,(flag_x - 20,flag_y - 20))
-                pygame.draw.circle(screen, (255, 0, 0), (draw_ans_x, draw_ans_y), 5)
-                pygame.draw.circle(screen, (0, 0, 255), (draw_player_x, draw_player_y), 5)
-
-                if(show_result_surface == None):
-                    show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg_4guess,scale2)
-                screen.blit(show_result_surface,(0,0) )
 
                 correct = False
                 if((map == 1 or map == 3) and distance < 100):
                     correct = True
-                elif(map == 2 and distance < 90):
+                elif(map == 2 and distance < 100):
                     correct = True
                 else:
                     correct = False
 
                 if(correct):
-                    pygame.draw.circle(screen,(255,0,0),(SCREEN_CENTER_X,SCREEN_CENTER_Y), 100,10)
+                    pygame.draw.circle(screen,(255,0,0),(SCREEN_CENTER_X,SCREEN_CENTER_Y-400), 100,10)
                 else:
                     pygame.draw.line(screen,(0,0,255),(SCREEN_CENTER_X - 50,SCREEN_CENTER_Y - 50),(SCREEN_CENTER_X + 50,SCREEN_CENTER_Y+50),10)
                     pygame.draw.line(screen,(0,0,255),(SCREEN_CENTER_X - 50,SCREEN_CENTER_Y + 50),(SCREEN_CENTER_X + 50,SCREEN_CENTER_Y-50),10)
@@ -574,19 +590,21 @@ def main():
                 
                 if event.type == MOUSEBUTTONDOWN and event.button == 3:
                     print("右クリックが押されました")
-                    current_mode = 2 
+                    mx, my = pygame.mouse.get_pos()
                     mx, my = event.pos
                     
                     original_x = (mx - img_x) / final_scale
                     original_y = (my - img_y) / final_scale
-
-
-                    print(f"元画像座標:({original_x:.1f},{original_y:.1f})")
-                    position_was_changed = 1
-                    player_ans_x = int(original_x)
-                    player_ans_y = int(original_y)
+                    print(mapimg.get_width())
+                    print(original_x)
+                    if((mapimg.get_width() > original_x and 0 < original_x) and (mapimg.get_height() > original_y and 0 < original_y)):
+                        position_was_changed = 1
+                        player_ans_x = int(original_x)
+                        player_ans_y = int(original_y)
+                        current_mode = 2 
+                    else:
+                        print(f"元画像座標:({original_x:.1f},{original_y:.1f})")
                     
-                    are_you_sure = 1
             if(current_mode == 4):
                 if event.type == KEYDOWN:
                     if event.key == K_1:
