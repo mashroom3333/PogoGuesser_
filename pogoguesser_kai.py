@@ -92,7 +92,7 @@ class Data:
         self.ans_y = None
         self.player_x = None
         self.player_y = None
-        self.map = None
+        self.map = 1
         self.color_r = 255
         self.color_g = 0
         self.color_b = 0
@@ -249,7 +249,7 @@ class ViwerScene: #推測画面クラス========================================
         self.screen = screen
         self.finished = False
         self.next_scene = None
-        self.map = 1
+        self.map = self.Data.map
         self.mapimg = None
         self.mapimg_scaled = None
         self.mask_scaled = None
@@ -266,7 +266,7 @@ class ViwerScene: #推測画面クラス========================================
         self.perticles = []
         self.hit = None
         
-        self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.map]).convert_alpha()
+        self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.Data.map]).convert_alpha()
         self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
         
         self.choseable_points = []
@@ -314,14 +314,30 @@ class ViwerScene: #推測画面クラス========================================
         self.laser_origin_x = SCREEN_SIZE_CENTER_X
         self.laser_origin_y = SCREEN_SIZE_CENTER_Y
 
+    def reset_map(self):
+        self.set_map(self.Data.map)
+        self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.Data.map]).convert_alpha()
+        self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
+        
+        self.choseable_points = []
+        self.make_valid_points()
+        self.set_ans()
+        
+        self.set_mapimg()
+        self.set_new_ques(self.Data.getAnsX(), self.Data.getAnsY())
+
     def set_new_ques(self,x,y):
-        if(self.map == 1):
+        print("new question")
+        if(self.Data.map == 1):
             g_bairitu =  int(1340/250) #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
-        if(self.map == 2):
+        if(self.Data.map == 2):
             g_bairitu = int(1860/300)
-        if(self.map == 3):
+        if(self.Data.map == 3):
             g_bairitu = int(1300/330) #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
             
+        print(self.Data.map)
+        print(g_bairitu)
+
         src_w = int(1920 / g_bairitu)
         src_h = int(1080 / g_bairitu)
 
@@ -381,6 +397,12 @@ class ViwerScene: #推測画面クラス========================================
                 self.laser_origin_x = x
                 self.laser_origin_y = y
 
+    def is_map_correct(self):
+        if(not self.map == self.Data.map):
+            self.reset_map()
+        else:
+            return None
+
 
     #---------描画系---------------------------------------------------------
     def draw_marks(self):
@@ -423,6 +445,7 @@ class ViwerScene: #推測画面クラス========================================
     #------------------------------------------------------------------
     def update(self):
         self.pointing()
+        self.is_map_correct()
         if(self.Data.getNeedReset()):
             self.reset()
             self.Data.setNeedReset(False)
@@ -456,7 +479,7 @@ class MapScene: #マップクラス=============================================
         self.font_mini = pygame.font.Font(None,40)
         self.finished = False
         self.next_scene = None
-        self.map = 1
+        self.map = self.Data.map
         self.mapimg_original = None
         self.mapimg_scaled = None
         self.mask_scaled = None
@@ -482,7 +505,7 @@ class MapScene: #マップクラス=============================================
         self.map = map
     
     def set_mapimg(self):
-        self.mapimg_original = pygame.image.load(MAP_IMG_PATH[self.map]).convert_alpha()
+        self.mapimg_original = pygame.image.load(MAP_IMG_PATH[self.Data.map]).convert_alpha()
 
     def get_scaled(self):
         sw, sh = SCREEN_SIZE
@@ -493,6 +516,19 @@ class MapScene: #マップクラス=============================================
         self.w = int(iw * self.final_scale)
         self.h = int(ih * self.final_scale)
         self.mapimg_scaled = pygame.transform.smoothscale(self.mapimg_original, (self.w,self.h))
+
+    def reset_map(self):
+        self.scale = 1.0
+        self.final_scale = 1.0
+        self.img_x = 0
+        self.img_y = 0
+        self.set_map(self.Data.map)
+
+        self.set_mapimg()
+        self.get_scaled()
+        print("リセットしました。現在のマップは")
+        print(self.map)
+
     
     def scaling_value(self):
         if self.zoom_counter > 0:
@@ -529,6 +565,12 @@ class MapScene: #マップクラス=============================================
         print("distance is")
         print(distance)
 
+    def is_map_correct(self):
+        if(not self.map == self.Data.map):
+            self.reset_map()
+        else:
+            return None
+
     def image_to_screen(img_x, img_y, center_x, center_y, scale):
         screen_w,screen_h = SCREEN_SIZE
         screen_x = (img_x - center_x) * scale + screen_w / 2
@@ -544,6 +586,7 @@ class MapScene: #マップクラス=============================================
 
     def update(self):
         self.scaling_value()
+        self.is_map_correct()
         pass
 
     def draw_setumei(self):
@@ -604,10 +647,10 @@ class MapScene: #マップクラス=============================================
             
 class AnswerScene:
     def __init__(self,screen,data):
-        self.map = 1
+        self.Data = data
+        self.map = self.Data.map
         self.mapimg = pygame.image.load(MAP_IMG_PATH[self.map]).convert_alpha()
         self.mapimg_scaled = None
-        self.Data = data
         self.screen = screen
         self.finished = False
         self.next_scene = None
