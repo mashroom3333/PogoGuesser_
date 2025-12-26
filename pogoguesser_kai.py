@@ -5,6 +5,7 @@ import os
 import random
 import numpy as np
 from pygame.locals import*
+from dataclasses import dataclass
 
 SCREEN_SIZE = (1920,1080)
 SCREEN_SIZE_X = SCREEN_SIZE[0]
@@ -19,6 +20,12 @@ MAP_IMG_PATH = {
     1: "assets/map1.jpeg",
     2: "assets/map2.jpeg",
     3: "assets/map3.jpeg",
+}
+
+CHOSEABLE_AREA_IMG_PATH = {
+    1: "assets/map1_choseable_area.png",
+    2: "assets/map2_choseable_area.png",
+    3: "assets/map3_choseable_area.png",
 }
 
 class Hitmark:
@@ -74,6 +81,12 @@ class Perticle:
     def is_dead(self):
         return self.counter >= self.max_counter
 
+@dataclass
+class GameState:
+    current_map:int
+    color_r :int
+    color_g :int
+    color_b :int
 
 class MenuScene:
     def __init__(self,screen):
@@ -111,6 +124,8 @@ class ViwerScene: #推測画面クラス========================================
         self.mapimg_scaled = None
         self.mask_scaled = None
         self.rect_scaled = None
+        self.choseable_mask = None
+        self.choseable_img = None
         self.ans_x = None
         self.ans_y = None
         self.laser_origin_x = 0
@@ -126,9 +141,39 @@ class ViwerScene: #推測画面クラス========================================
         self.laser_color_g = 0
         self.laser_color_b = 0
         
+        self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.map]).convert_alpha()
+        self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
+        self.choseable_points = []
+        self.make_valid_points()
+        self.set_ans()
+        
         self.set_mapimg()
-        self.set_new_ques(1400,5300)
+        self.set_new_ques(self.ans_x, self.ans_y)
     
+    def make_valid_points(self):
+        w,h = self.choseable_mask.get_size()
+        
+        for y in range(h):
+            for x in range(w):
+                if self.choseable_mask.get_at((x,y)):
+                    self.choseable_points.append((x,y))
+
+
+    def image_to_screen(self,img_x, img_y, center_x, center_y, scale):
+        screen_w,screen_h = SCREEN_SIZE
+        screen_x = (img_x - center_x) * scale + screen_w / 2
+        screen_y = (img_y - center_y) * scale + screen_h / 2
+        return screen_x, screen_y
+
+    def screen_to_image(self,screen_x, screen_y, center_x, center_y, scale):
+        screen_w, screen_h = SCREEN_SIZE
+        img_x = (screen_x - screen_w / 2) / scale + center_x
+        img_y = (screen_y - screen_h / 2) / scale + center_y
+        return img_x, img_y
+
+    def set_ans(self):
+        self.ans_x, self.ans_y = random.choice(self.choseable_points)
+        
     def set_map(self,map):
         self.map = map
 
@@ -240,7 +285,7 @@ class ViwerScene: #推測画面クラス========================================
         pygame.draw.line(self.screen,(255,150,150),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),30)
         pygame.draw.line(self.screen,(255,230,230),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
                 
-    #--------------------------------------------------------------------
+    #------------------------------------------------------------------
     def update(self):
         self.pointing()
 
