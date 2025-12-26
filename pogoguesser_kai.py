@@ -15,6 +15,12 @@ MAP_FOR_GUESS_IMG_PATH = {
     3: "assets/map3.png",
 }
 
+MAP_IMG_PATH = {
+    1: "assets/map1.jpeg",
+    2: "assets/map2.jpeg",
+    3: "assets/map3.jpeg",
+}
+
 class Hitmark:
     def __init__(self,screen,x,y,r,g,b):
         self.screen = screen
@@ -92,10 +98,10 @@ class MenuScene:
     def handle_events(self,event):
         if(event.type == KEYDOWN):
             self.finished = True
-            self.next_scene = ViwerScene
+            self.next_scene = "viewer"
 
 
-class ViwerScene:
+class ViwerScene: #推測画面クラス=============================================
     def __init__(self,screen):
         self.screen = screen
         self.finished = False
@@ -196,6 +202,8 @@ class ViwerScene:
                 self.laser_origin_x = x
                 self.laser_origin_y = y
 
+
+    #---------描画系---------------------------------------------------------
     def draw_marks(self):
         if self.hit is not None:
             new_mark = Hitmark(
@@ -232,6 +240,7 @@ class ViwerScene:
         pygame.draw.line(self.screen,(255,150,150),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),30)
         pygame.draw.line(self.screen,(255,230,230),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
                 
+    #--------------------------------------------------------------------
     def update(self):
         self.pointing()
 
@@ -245,7 +254,7 @@ class ViwerScene:
     def handle_events(self,event):
         if(event.type == KEYDOWN):
             self.finished = True
-            self.next_scene = MenuScene
+            self.next_scene = "map"
 
         if(event.type == MOUSEBUTTONDOWN and event.button == 1):
             mx,my = event.pos
@@ -253,6 +262,119 @@ class ViwerScene:
 
 
 
+class MapScene: #マップクラス=============================================
+    def __init__(self,screen):
+        self.screen = screen
+        self.sw,self.sh = SCREEN_SIZE
+        self.font = pygame.font.Font(None,60)
+        self.font_mini = pygame.font.Font(None,40)
+        self.finished = False
+        self.next_scene = None
+        self.map = 1
+        self.mapimg_original = None
+        self.mapimg_scaled = None
+        self.mask_scaled = None
+        self.rect_scaled = None
+        self.ans_x = None
+        self.ans_y = None
+        self.scale = 1.0
+        self.final_scale = 1.0
+        self.img_x = 0
+        self.img_y = 0
+
+        self.dragging = False
+        self.mouse_moving = False
+        self.zoom_counter = 0
+        self.wheel_direction = 0
+        self.last_mx = 0
+        self.last_my = 0
+        
+        
+        self.set_mapimg()
+        self.get_scaled()
+    
+    def set_map(self,map):
+        self.map = map
+    
+    def set_mapimg(self):
+        self.mapimg_original = pygame.image.load(MAP_IMG_PATH[self.map]).convert_alpha()
+
+    def get_scaled(self):
+        sw, sh = SCREEN_SIZE
+        iw, ih = self.mapimg_original.get_size()
+        base_scale = min(sw/ iw, sh/ih)
+
+        self.final_scale = base_scale * self.scale
+        self.w = int(iw * self.final_scale)
+        self.h = int(ih * self.final_scale)
+        self.mapimg_scaled = pygame.transform.smoothscale(self.mapimg_original, (self.w,self.h))
+    
+    def scaling_value(self):
+        if self.zoom_counter > 0:
+            center_x = self.sw // 2 
+            center_y = self.sw // 2 
+
+            img_cx = (center_x - self.img_x)/self.final_scale
+            img_cy = (center_y - self.img_y)/self.final_scale
+
+            self.scale += self.wheel_direction * (self.zoom_counter * 0.02)
+            self.scale = max(0.5,min(self.scale, 20))
+
+            self.image_scaled = self.get_scaled()
+
+            self.img_x = center_x - img_cx * self.final_scale
+            self.img_y = center_y - img_cy * self.final_scale
+            self.zoom_counter -= 1
+
+
+    def update(self):
+        self.scaling_value()
+        pass
+
+    def draw_setumei(self):
+        t1 = self.font_mini.render("drag : move",True,(255,255,255))
+        t2 = self.font_mini.render("wheel : zoom",True,(255,255,255))
+        t3 = self.font_mini.render("rightClick : answer",True,(255,255,255))
+        t4 = self.font_mini.render("M : close map",True,(255,255,255))
+        self.screen.blit(t1,[0,SCREEN_SIZE[1]-240])
+        self.screen.blit(t2,[0,SCREEN_SIZE[1]-180])
+        self.screen.blit(t3,[0,SCREEN_SIZE[1]-120])
+        self.screen.blit(t4,[0,SCREEN_SIZE[1]-60])
+
+    def draw(self):
+        self.screen.fill((0,0,0))
+        self.screen.blit(self.mapimg_scaled,(self.img_x,self.img_y))
+        self.draw_setumei()
+
+    def handle_events(self,event):
+        if(event.type == KEYDOWN):
+            self.finished = True
+            self.next_scene = "viewer"
+
+        if event.type == MOUSEWHEEL:
+            self.wheel_direction = event.y
+            self.zoom_counter = 5
+        
+        if event.type == MOUSEBUTTONDOWN and event.button == 1:
+            self.dragging = True
+            self.last_mx, self.last_my = event.pos
+            mx,my = event.pos
+
+        #ドラッグ中========================================
+        if event.type == MOUSEMOTION and self.dragging:
+            mx,my = event.pos
+            dx = mx - self.last_mx
+            dy = my - self.last_my
+
+            self.img_x += dx
+            self.img_y += dy
+
+            self.last_mx = mx
+            self.last_my = my
+            
+        if event.type == MOUSEBUTTONUP and event.button == 1:
+            self.dragging = False
+            
 
 class Game:#=================================ゲームクラス================================
     def __init__(self):
@@ -262,12 +384,17 @@ class Game:#=================================ゲームクラス=================
         pygame.display.set_caption("test")
         self.clock = pygame.time.Clock()
         self.running = True
-        
-        self.scene = MenuScene(self.screen)
-        self.set_scene(MenuScene(self.screen))
+        self.scenes = {
+            "menu":MenuScene(self.screen),
+            "map":MapScene(self.screen),
+            "viewer":ViwerScene(self.screen),
+        }
 
-    def set_scene(self,scene):
-        self.scene = scene
+        
+        self.set_scene("menu")
+
+    def set_scene(self,name):
+        self.scene = self.scenes[name]
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -280,7 +407,9 @@ class Game:#=================================ゲームクラス=================
         self.scene.update()
 
         if self.scene.next_scene:
-            self.set_scene(self.scene.next_scene(self.screen))
+            next_name = self.scene.next_scene
+            self.scene.next_scene = None
+            self.set_scene(next_name)
 
 
     def draw(self):
