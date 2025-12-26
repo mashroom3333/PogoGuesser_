@@ -119,6 +119,7 @@ def hantei_mask(screen, mask, rect, start, end, step=1):
             pygame.draw.line(screen, (255, 0, 0), (x1, y1), (px, py), 40)
             pygame.draw.line(screen, (255, 150, 150), (x1, y1), (px, py), 30)
             pygame.draw.line(screen, (255, 230, 230), (x1, y1), (px, py), 20)
+            print("hello")
             return (px, py)
             return (px, py)
 

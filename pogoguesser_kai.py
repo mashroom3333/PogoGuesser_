@@ -16,12 +16,15 @@ MAP_FOR_GUESS_IMG_PATH = {
 }
 
 class Hitmark:
-    def __init__(self,screen,x,y):
+    def __init__(self,screen,x,y,r,g,b):
         self.screen = screen
         self.x = x 
         self.y = y 
         self.r = 40.0
         self.color = 0
+        self.color_r = r
+        self.color_g = g
+        self.color_b = b
         self.speed = 0.8
         
     def update_size(self):
@@ -30,19 +33,22 @@ class Hitmark:
         
     def draw(self, screen):
         if self.r > 0:
-            pygame.draw.circle(screen,(255,230-self.color,230 - self.color) , (int(self.x), int(self.y)) , int(self.r))
+            pygame.draw.circle(screen,(self.color_r,230-self.color,230 - self.color) , (int(self.x), int(self.y)) , int(self.r))
         
     def is_dead(self):
         return self.r <= 0
     
 class Perticle:
-    def __init__(self,screen,x,y):
+    def __init__(self,screen,x,y,cr,cg,cb):
         self.vmax = 3
         self.screen = screen
         self.x = x 
         self.y = y 
         self.r = 5.0
         self.g = 0.01
+        self.color_r = cr
+        self.color_g = cg
+        self.color_b = cb
         self.counter = 0
         self.max_counter = 30
         self.color_usui = random.uniform(0,240)
@@ -57,55 +63,11 @@ class Perticle:
 
     def draw(self, screen):
         if self.counter < self.max_counter:
-            pygame.draw.circle(screen,(255,self.color_usui,self.color_usui) , (int(self.x) + (self.counter  * self.v_x * 3.5), int(self.y) + (self.counter * self.v_y * 3.5)) , int(self.r))
+            pygame.draw.circle(screen,(self.color_r,self.color_usui,self.color_usui) , (int(self.x) + (self.counter  * self.v_x * 3.5), int(self.y) + (self.counter * self.v_y * 3.5)) , int(self.r))
         
     def is_dead(self):
         return self.counter >= self.max_counter
 
-
-
-def hantei_mask(screen, mask, rect, start, end, step=1):
-    x1, y1 = start
-    x2, y2 = end
-
-    dx = x2 - x1
-    dy = y2 - y1
-
-    length = (dx*dx + dy*dy) ** 0.5
-    if length == 0:
-        return None
-
-    ux = dx / length
-    uy = dy / length
-
-    # マスク（または画面）の対角線分だけ進めば十分
-    max_len = (mask.get_size()[0]**2 + mask.get_size()[1]**2) ** 0.5
-    steps = int(max_len // step)
-
-    last_px, last_py = x1, y1
-
-    for i in range(steps):
-        px = int(x1 + ux * i * step)
-        py = int(y1 + uy * i * step)
-
-        # マスク範囲外に出たら終了
-        if not (0 <= px < mask.get_size()[0] and 0 <= py < mask.get_size()[1]):
-            break
-
-        last_px, last_py = px, py
-
-        if mask.get_at((px, py)):
-            pygame.draw.line(screen, (255, 0, 0), (x1, y1), (px, py), 40)
-            pygame.draw.line(screen, (255, 150, 150), (x1, y1), (px, py), 30)
-            pygame.draw.line(screen, (255, 230, 230), (x1, y1), (px, py), 20)
-            return (px, py)
-            return (px, py)
-
-    # ヒットしなかった場合でも、延長線を描画
-    pygame.draw.line(screen, (255, 0, 0), (x1, y1), (last_px, last_py), 40)
-    pygame.draw.line(screen, (255, 150, 150), (x1, y1), (last_px, last_py), 30)
-    pygame.draw.line(screen, (255, 230, 230), (x1, y1), (last_px, last_py), 20)
-    return None
 
 class MenuScene:
     def __init__(self,screen):
@@ -154,6 +116,9 @@ class ViwerScene:
         self.marks = []
         self.perticles = []
         self.hit = None
+        self.laser_color_r = 255
+        self.laser_color_g = 0
+        self.laser_color_b = 0
         
         self.set_mapimg()
         self.set_new_ques(1400,5300)
@@ -183,8 +148,6 @@ class ViwerScene:
         self.rect_scaled = self.mask_scaled.get_rect()
         print("image scaled")
         print(self.mask_scaled)
-
-
 
     def pointing(self):
         mouse =pygame.mouse.get_pos()
@@ -227,9 +190,18 @@ class ViwerScene:
                 return True
         return None
 
+    def change_laser_origin(self,x,y):
+        if 0 <= x < self.mask_scaled.get_size()[0] and 0 <= y < self.mask_scaled.get_size()[1]:
+            if not self.mask_scaled.get_at((x,y)):
+                self.laser_origin_x = x
+                self.laser_origin_y = y
+
     def draw_marks(self):
         if self.hit is not None:
-            new_mark = Hitmark(self.screen,self.hit_x,self.hit_y)
+            new_mark = Hitmark(
+                self.screen,
+                self.hit_x,self.hit_y,
+                self.laser_color_r,self.laser_color_g,self.laser_color_b)
             self.marks.append(new_mark)
 
         for m in self.marks[:]:
@@ -242,18 +214,21 @@ class ViwerScene:
     
     def draw_perticles(self):
         if self.hit is not None:
-            new_perticle = Perticle(self.screen,self.hit_x,self.hit_y)
+            new_perticle = Perticle(
+                self.screen,
+                self.hit_x,self.hit_y,
+                self.laser_color_r,self.laser_color_g,self.laser_color_b)
             self.perticles.append(new_perticle)
-            
-            for p in self.perticles[:]:
-                p.update_counter()
-                p.draw(self.screen)
 
-                if p.is_dead():
-                    self.perticles.remove(p)
+        for p in self.perticles[:]:
+            p.update_counter()
+            p.draw(self.screen)
+
+            if p.is_dead():
+                self.perticles.remove(p)
 
     def draw_laser(self):
-        pygame.draw.line(self.screen,(255,0,0),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),40)
+        pygame.draw.line(self.screen,(self.laser_color_r,self.laser_color_g,self.laser_color_b),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),40)
         pygame.draw.line(self.screen,(255,150,150),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),30)
         pygame.draw.line(self.screen,(255,230,230),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
                 
@@ -271,6 +246,10 @@ class ViwerScene:
         if(event.type == KEYDOWN):
             self.finished = True
             self.next_scene = MenuScene
+
+        if(event.type == MOUSEBUTTONDOWN and event.button == 1):
+            mx,my = event.pos
+            self.change_laser_origin(mx,my)
 
 
 
