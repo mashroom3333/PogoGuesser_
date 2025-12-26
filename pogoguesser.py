@@ -215,6 +215,46 @@ def screen_to_image(screen_x, screen_y, center_x, center_y, scale):
     img_y = (screen_y - screen_h / 2) / scale + center_y
     return img_x, img_y
 
+def draw_zoomed_map(
+    screen, mapimg,
+    center_x, center_y,
+    scale,
+    ans_pos, player_pos
+):
+    screen_w, screen_h = screen.get_size()
+
+    # 拡大
+    scaled_map = pygame.transform.smoothscale(
+        mapimg,
+        (int(mapimg.get_width() * scale),
+         int(mapimg.get_height() * scale))
+    )
+
+    # 「中心点」が画面中央に来るようにオフセット
+    offset_x = screen_w // 2 - int(center_x * scale)
+    offset_y = screen_h // 2 - int(center_y * scale)
+
+    # ★ 画面外に出てもOK
+    screen.blit(scaled_map, (offset_x, offset_y))
+
+    # 正解点
+    ax, ay = ans_pos
+    draw_ax = int(ax * scale) + offset_x
+    draw_ay = int(ay * scale) + offset_y
+
+    # 回答点
+    px, py = player_pos
+    draw_px = int(px * scale) + offset_x
+    draw_py = int(py * scale) + offset_y
+
+    pygame.draw.circle(screen, (255,0,0), (draw_ax, draw_ay), 6)
+    pygame.draw.circle(screen, (0,0,255), (draw_px, draw_py), 6)
+    pygame.draw.line(
+        screen, (255,165,0),
+        (draw_ax, draw_ay),
+        (draw_px, draw_py), 3
+    )
+
 
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
@@ -456,15 +496,16 @@ def main():
                 midle_y = (ans_y + player_ans_y) // 2
                 
                 # ... (後略) ...
+                draw_zoomed_map(screen,mapimg,midle_x,midle_y,scale2,(ans_x,ans_y),(player_ans_x,player_ans_y))
                 pogoking_x,pogoking_y = image_to_screen(ans_x,ans_y,midle_x,midle_y,scale2)
                 flag_x,flag_y = image_to_screen(player_ans_x,player_ans_y,midle_x,midle_y,scale2)
 
                 if(show_result_surface == None):
                     show_result_surface = get_ans_scaled(midle_x,midle_y,mapimg,scale2)
-                screen.blit(show_result_surface,(0,0) )
-                pygame.draw.line(screen, (255,255,255),(pogoking_x,pogoking_y),(flag_x,flag_y),3)
-                screen.blit(pogo_king,(pogoking_x - 20,pogoking_y - 20))
-                screen.blit(flag_img,(flag_x - 20,flag_y - 20))
+                #screen.blit(show_result_surface,(0,0) )
+                #pygame.draw.line(screen, (255,255,255),(pogoking_x,pogoking_y),(flag_x,flag_y),3)
+                #screen.blit(pogo_king,(pogoking_x - 20,pogoking_y - 20))
+                #screen.blit(flag_img,(flag_x - 20,flag_y - 20))
 
                 correct = False
                 if((map == 1 or map == 3) and distance < 100):
