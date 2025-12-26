@@ -10,6 +10,9 @@ from dataclasses import dataclass
 SCREEN_SIZE = (1920,1080)
 SCREEN_SIZE_X = SCREEN_SIZE[0]
 SCREEN_SIZE_Y = SCREEN_SIZE[1]
+SCREEN_SIZE_CENTER_X = SCREEN_SIZE_X // 2
+SCREEN_SIZE_CENTER_Y = SCREEN_SIZE_Y // 2
+
 MAP_FOR_GUESS_IMG_PATH = {
     1: "assets/map1.png",
     2: "assets/map2.png",
@@ -87,12 +90,15 @@ class Data:
     def __init__(self):
         self.ans_x = None
         self.ans_y = None
+        self.player_x = None
+        self.player_y = None
         self.map = None
         self.color_r = 255
         self.color_g = 0
         self.color_b = 0
         self.ready_to_ques = False
         self.need_reset = False
+        self.distance = 0
     
     def setColorR(self,x):
         self.color_r = x
@@ -113,6 +119,30 @@ class Data:
     def getNeedReset(self):
         return self.need_reset
     
+    def setPlayerX(self,x):
+        self.player_x = x
+    def setPlayerY(self,y):
+        self.player_y = y
+
+    def getPlayerX(self):
+        return self.player_x
+    def getPlayerY(self):
+        return self.player_y
+
+    def setDistance(self,distance):
+        self.distance = distance
+    def getDistance(self):
+        return self.distance
+
+    def setAnsX(self,x):
+        self.ans_x = x
+    def setAnsY(self,y):
+        self.ans_y = y
+
+    def getAnsX(self):
+        return self.ans_x
+    def getAnsY(self):
+        return self.ans_y
 
 class MenuScene:
     def __init__(self,screen,data):
@@ -122,11 +152,33 @@ class MenuScene:
         self.map = None
         self.finished = False
         self.next_scene = None
-    
-    def set_map(self,map):
-        self.map = map
+        self.map1button = MenuMapButton(self.screen,self.Data,1)
+        self.map2button = MenuMapButton(self.screen,self.Data,2)
+        self.map3button = MenuMapButton(self.screen,self.Data,3)
 
+    def buttondraw(self):
+        self.map1button.draw()
+        self.map2button.draw()
+        self.map3button.draw()
+
+    def buttonupdate(self):
+        self.map1button.update()
+        self.map2button.update()
+        self.map3button.update()
+
+    def any_button_pushed(self):
+        if (self.map1button.button_pushed == True):
+            print("map1buttonwas pushed")
+            return self.map1button.map
+        if (self.map2button.button_pushed == True):
+            print("map2buttonwas pushed")
+            return self.map2button.map
+        if (self.map3button.button_pushed == True):
+            print("map3buttonwas pushed")
+            return self.map3button.map
+        
     def update(self):
+        self.buttonupdate()
         pass
 
     def draw(self):
@@ -134,12 +186,62 @@ class MenuScene:
         text = self.font.render("Press any key to exit", True,(255,255,255))
         rect = text.get_rect(center = self.screen.get_rect().center)
         self.screen.blit(text,rect)
+        self.buttondraw()
 
     def handle_events(self,event):
-        if(event.type == KEYDOWN):
+        self.map1button.handle_events(event)
+        self.map2button.handle_events(event)
+        self.map3button.handle_events(event)
+
+        if(self.any_button_pushed()):
+            self.Data.map = self.any_button_pushed()
+            te = f"map{self.Data.map} was chosed"
+            print(te)
             self.finished = True
             self.next_scene = "viewer"
 
+class MenuMapButton:
+    def __init__(self,screen,data,map):
+        self.Data = data
+        self.screen = screen
+        self.font = pygame.font.Font(None,60)
+        self.map = map
+        self.width = 1000
+        self.height = 50
+        self.left_top_x = None
+        self.x1 = SCREEN_SIZE_CENTER_X - int(self.width / 2)
+        self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) * self.map
+        self.x2 = self.x1 + self.width
+        self.y2 = self.y1 + self.height
+        self.color = 150
+        self.button_pushed = False
+        self.offset= 20
+        
+    def check_on_mouse(self):
+        mx,my = pygame.mouse.get_pos()
+        if(self.x1 < mx and mx < self.x2) and (self.y1 < my and my < self.y2):
+            self.change_color("light")
+            return True
+        else:
+            self.change_color("dark")
+            return False
+
+    def change_color(self,str):
+        if(str == "light"):
+            self.color = 230
+        if(str == "dark"):
+            self.color = 150
+
+    def update(self):
+        self.check_on_mouse()
+        pass
+    def draw(self):
+        pygame.draw.rect(self.screen,(self.color,self.color,self.color),(self.x1, self.y1,self.width,self.height -self.offset))
+
+    def handle_events(self,event):
+        if((event.type == MOUSEBUTTONDOWN) and (event.button == 1) and (self.check_on_mouse())):
+            self.button_pushed = True
+    
 
 class ViwerScene: #推測画面クラス=============================================
     def __init__(self,screen,data):
@@ -154,10 +256,8 @@ class ViwerScene: #推測画面クラス========================================
         self.rect_scaled = None
         self.choseable_mask = None
         self.choseable_img = None
-        self.ans_x = None
-        self.ans_y = None
-        self.laser_origin_x = 0
-        self.laser_origin_y = 0
+        self.laser_origin_x = SCREEN_SIZE_CENTER_X
+        self.laser_origin_y = SCREEN_SIZE_CENTER_Y
         self.laser_last_x = 0
         self.laser_last_y = 0
         self.hit_x = None
@@ -174,7 +274,7 @@ class ViwerScene: #推測画面クラス========================================
         self.set_ans()
         
         self.set_mapimg()
-        self.set_new_ques(self.ans_x, self.ans_y)
+        self.set_new_ques(self.Data.getAnsX(), self.Data.getAnsY())
     
     def make_valid_points(self):
         w,h = self.choseable_mask.get_size()
@@ -198,7 +298,9 @@ class ViwerScene: #推測画面クラス========================================
         return img_x, img_y
 
     def set_ans(self):
-        self.ans_x, self.ans_y = random.choice(self.choseable_points)
+        x,y = random.choice(self.choseable_points)
+        self.Data.setAnsX(x) 
+        self.Data.setAnsY(y) 
         
     def set_map(self,map):
         self.map = map
@@ -208,7 +310,9 @@ class ViwerScene: #推測画面クラス========================================
         
     def reset(self):
         self.set_ans()
-        self.set_new_ques(self.ans_x, self.ans_y)
+        self.set_new_ques(self.Data.getAnsX(), self.Data.getAnsY())
+        self.laser_origin_x = SCREEN_SIZE_CENTER_X
+        self.laser_origin_y = SCREEN_SIZE_CENTER_Y
 
     def set_new_ques(self,x,y):
         if(self.map == 1):
@@ -357,12 +461,11 @@ class MapScene: #マップクラス=============================================
         self.mapimg_scaled = None
         self.mask_scaled = None
         self.rect_scaled = None
-        self.ans_x = None
-        self.ans_y = None
         self.scale = 1.0
         self.final_scale = 1.0
         self.img_x = 0
         self.img_y = 0
+        self.distance = None
 
         self.dragging = False
         self.mouse_moving = False
@@ -394,7 +497,7 @@ class MapScene: #マップクラス=============================================
     def scaling_value(self):
         if self.zoom_counter > 0:
             center_x = self.sw // 2 
-            center_y = self.sw // 2 
+            center_y = self.sh // 2 
 
             img_cx = (center_x - self.img_x)/self.final_scale
             img_cy = (center_y - self.img_y)/self.final_scale
@@ -407,6 +510,36 @@ class MapScene: #マップクラス=============================================
             self.img_x = center_x - img_cx * self.final_scale
             self.img_y = center_y - img_cy * self.final_scale
             self.zoom_counter -= 1
+
+    def check_answer_correct(self):
+        ax = self.Data.getAnsX()
+        ay = self.Data.getAnsY()
+        px = self.Data.getPlayerX()
+        py = self.Data.getPlayerY()
+        print(ax)
+        print(ay)
+        print(px)
+        print(py)
+        
+        dx = max(abs(ax - px),1)
+        dy = max(abs(ay - py),1)
+
+        distance = math.hypot(dx,dy)
+        self.Data.setDistance(distance)
+        print("distance is")
+        print(distance)
+
+    def image_to_screen(img_x, img_y, center_x, center_y, scale):
+        screen_w,screen_h = SCREEN_SIZE
+        screen_x = (img_x - center_x) * scale + screen_w / 2
+        screen_y = (img_y - center_y) * scale + screen_h / 2
+        return screen_x, screen_y
+
+
+    def screen_to_image(self, screen_x, screen_y):
+        img_x = (screen_x - self.img_x) / self.final_scale
+        img_y = (screen_y - self.img_y) / self.final_scale
+        return img_x, img_y
 
 
     def update(self):
@@ -460,22 +593,61 @@ class MapScene: #マップクラス=============================================
         if event.type == MOUSEBUTTONDOWN and event.button == 3:
             self.finished = True
             self.next_scene = "answer"
-            self.Data.setNeedReset(True)
 
+            mx, my = event.pos
+            player_x, player_y = self.screen_to_image(mx, my)
+
+            self.Data.setPlayerX(player_x)
+            self.Data.setPlayerY(player_y)
+            self.check_answer_correct()
+            self.Data.setNeedReset(True)
             
 class AnswerScene:
     def __init__(self,screen,data):
+        self.map = 1
+        self.mapimg = pygame.image.load(MAP_IMG_PATH[self.map]).convert_alpha()
+        self.mapimg_scaled = None
+        self.Data = data
         self.screen = screen
         self.finished = False
         self.next_scene = None
+        self.scale = 0
+        self.scale_bool = False
+        self.finalzahyou = None
+
+    def keisan(self):
+        px = self.Data.getPlayerX()
+        py = self.Data.getPlayerY()
+        ax = self.Data.getAnsX()
+        ay = self.Data.getAnsY()
+
+        midle_x = (px + ax) // 2
+        midle_y = (py + ay) // 2
+
+        dx = abs(px - ax)
+        dy = abs(py - ay)
+        print(self.mapimg.get_size()[1])
+        print(self.mapimg.get_size()[0])
+
+        print(dx)
+        print(dy)
+        if(dx < dy):
+            self.scale = min(self.mapimg.get_size()[1]/dy,4)
+        else:
+            self.scale = min(self.mapimg.get_size()[0]/dx,4)
+
+        print(self.scale)
+        self.mapimg_scaled = pygame.transform.scale(self.mapimg,(int(self.mapimg.get_rect().width * self.scale),int(self.mapimg.get_rect().height * self.scale)))
+        self.screen.blit(self.mapimg_scaled,(0,0))
+        
 
     def update(self):
         pass
 
     def draw(self):
-        self.screen.fill((0,0,0))
-        pygame.draw.line(self.screen,(255,150,150),(0,0),(1900,1080),30)
-
+        pygame.draw.line(self.screen,(255,255,255),(0,0),(1920,1080),20)
+        pass
+    
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
             self.finished = True
