@@ -29,15 +29,13 @@ CHOSEABLE_AREA_IMG_PATH = {
 }
 
 class Hitmark:
-    def __init__(self,screen,x,y,r,g,b):
+    def __init__(self,screen,x,y,data):
+        self.Data = data
         self.screen = screen
         self.x = x 
         self.y = y 
         self.r = 40.0
         self.color = 0
-        self.color_r = r
-        self.color_g = g
-        self.color_b = b
         self.speed = 0.8
         
     def update_size(self):
@@ -46,22 +44,23 @@ class Hitmark:
         
     def draw(self, screen):
         if self.r > 0:
-            pygame.draw.circle(screen,(self.color_r,230-self.color,230 - self.color) , (int(self.x), int(self.y)) , int(self.r))
+            cr = self.Data.getColorR()
+            cg = self.Data.getColorG()
+            cb = self.Data.getColorB()
+            pygame.draw.circle(screen,(cr,230 - cg,230 - cb) , (int(self.x), int(self.y)) , int(self.r))
         
     def is_dead(self):
         return self.r <= 0
     
 class Perticle:
-    def __init__(self,screen,x,y,cr,cg,cb):
+    def __init__(self,screen,x,y,data):
+        self.Data = data
         self.vmax = 3
         self.screen = screen
         self.x = x 
         self.y = y 
         self.r = 5.0
         self.g = 0.01
-        self.color_r = cr
-        self.color_g = cg
-        self.color_b = cb
         self.counter = 0
         self.max_counter = 30
         self.color_usui = random.uniform(0,240)
@@ -76,20 +75,48 @@ class Perticle:
 
     def draw(self, screen):
         if self.counter < self.max_counter:
-            pygame.draw.circle(screen,(self.color_r,self.color_usui,self.color_usui) , (int(self.x) + (self.counter  * self.v_x * 3.5), int(self.y) + (self.counter * self.v_y * 3.5)) , int(self.r))
+            cr = self.Data.getColorR()
+            cg = self.Data.getColorG()
+            cb = self.Data.getColorB()
+            pygame.draw.circle(screen,(cr,cg,cb) , (int(self.x) + (self.counter  * self.v_x * 3.5), int(self.y) + (self.counter * self.v_y * 3.5)) , int(self.r))
         
     def is_dead(self):
         return self.counter >= self.max_counter
 
-@dataclass
-class GameState:
-    current_map:int
-    color_r :int
-    color_g :int
-    color_b :int
+class Data:
+    def __init__(self):
+        self.ans_x = None
+        self.ans_y = None
+        self.map = None
+        self.color_r = 255
+        self.color_g = 0
+        self.color_b = 0
+        self.ready_to_ques = False
+        self.need_reset = False
+    
+    def setColorR(self,x):
+        self.color_r = x
+    def setColorG(self,x):
+        self.color_g = x
+    def setColorB(self,x):
+        self.color_b = x
+    
+    def getColorR(self):
+        return self.color_r
+    def getColorG(self):
+        return self.color_g
+    def getColorB(self):
+        return self.color_b
+
+    def setNeedReset(self,bool):
+        self.need_reset = bool
+    def getNeedReset(self):
+        return self.need_reset
+    
 
 class MenuScene:
-    def __init__(self,screen):
+    def __init__(self,screen,data):
+        self.Data = data
         self.screen = screen
         self.font = pygame.font.Font(None,60)
         self.map = None
@@ -115,7 +142,8 @@ class MenuScene:
 
 
 class ViwerScene: #推測画面クラス=============================================
-    def __init__(self,screen):
+    def __init__(self,screen,data):
+        self.Data = data
         self.screen = screen
         self.finished = False
         self.next_scene = None
@@ -137,12 +165,10 @@ class ViwerScene: #推測画面クラス========================================
         self.marks = []
         self.perticles = []
         self.hit = None
-        self.laser_color_r = 255
-        self.laser_color_g = 0
-        self.laser_color_b = 0
         
         self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.map]).convert_alpha()
         self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
+        
         self.choseable_points = []
         self.make_valid_points()
         self.set_ans()
@@ -179,6 +205,10 @@ class ViwerScene: #推測画面クラス========================================
 
     def set_mapimg(self):
         self.mapimg = pygame.image.load(MAP_FOR_GUESS_IMG_PATH[self.map]).convert_alpha()
+        
+    def reset(self):
+        self.set_ans()
+        self.set_new_ques(self.ans_x, self.ans_y)
 
     def set_new_ques(self,x,y):
         if(self.map == 1):
@@ -253,8 +283,7 @@ class ViwerScene: #推測画面クラス========================================
         if self.hit is not None:
             new_mark = Hitmark(
                 self.screen,
-                self.hit_x,self.hit_y,
-                self.laser_color_r,self.laser_color_g,self.laser_color_b)
+                self.hit_x,self.hit_y,self.Data)
             self.marks.append(new_mark)
 
         for m in self.marks[:]:
@@ -269,8 +298,7 @@ class ViwerScene: #推測画面クラス========================================
         if self.hit is not None:
             new_perticle = Perticle(
                 self.screen,
-                self.hit_x,self.hit_y,
-                self.laser_color_r,self.laser_color_g,self.laser_color_b)
+                self.hit_x,self.hit_y,self.Data)
             self.perticles.append(new_perticle)
 
         for p in self.perticles[:]:
@@ -281,13 +309,19 @@ class ViwerScene: #推測画面クラス========================================
                 self.perticles.remove(p)
 
     def draw_laser(self):
-        pygame.draw.line(self.screen,(self.laser_color_r,self.laser_color_g,self.laser_color_b),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),40)
+        cr = self.Data.getColorR()
+        cg = self.Data.getColorG()
+        cb = self.Data.getColorB()
+        pygame.draw.line(self.screen,(cr,cg,cb),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),40)
         pygame.draw.line(self.screen,(255,150,150),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),30)
         pygame.draw.line(self.screen,(255,230,230),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
                 
     #------------------------------------------------------------------
     def update(self):
         self.pointing()
+        if(self.Data.getNeedReset()):
+            self.reset()
+            self.Data.setNeedReset(False)
 
     def draw(self):
         self.screen.fill((0,0,0))
@@ -304,11 +338,14 @@ class ViwerScene: #推測画面クラス========================================
         if(event.type == MOUSEBUTTONDOWN and event.button == 1):
             mx,my = event.pos
             self.change_laser_origin(mx,my)
+        
+        self.Data.setColorR(0)
 
 
 
 class MapScene: #マップクラス=============================================
-    def __init__(self,screen):
+    def __init__(self,screen,data):
+        self.Data = data
         self.screen = screen
         self.sw,self.sh = SCREEN_SIZE
         self.font = pygame.font.Font(None,60)
@@ -419,20 +456,46 @@ class MapScene: #マップクラス=============================================
             
         if event.type == MOUSEBUTTONUP and event.button == 1:
             self.dragging = False
+
+        if event.type == MOUSEBUTTONDOWN and event.button == 3:
+            self.finished = True
+            self.next_scene = "answer"
+            self.Data.setNeedReset(True)
+
             
+class AnswerScene:
+    def __init__(self,screen,data):
+        self.screen = screen
+        self.finished = False
+        self.next_scene = None
+
+    def update(self):
+        pass
+
+    def draw(self):
+        self.screen.fill((0,0,0))
+        pygame.draw.line(self.screen,(255,150,150),(0,0),(1900,1080),30)
+
+    def handle_events(self,event):
+        if(event.type == MOUSEBUTTONDOWN and event.button == 3):
+            self.finished = True
+            self.next_scene = "viewer"
+        
 
 class Game:#=================================ゲームクラス================================
     def __init__(self):
         pygame.init()
 
+        self.Data = Data()
         self.screen = pygame.display.set_mode((SCREEN_SIZE))
         pygame.display.set_caption("test")
         self.clock = pygame.time.Clock()
         self.running = True
         self.scenes = {
-            "menu":MenuScene(self.screen),
-            "map":MapScene(self.screen),
-            "viewer":ViwerScene(self.screen),
+            "menu":MenuScene(self.screen,self.Data),
+            "map":MapScene(self.screen,self.Data),
+            "viewer":ViwerScene(self.screen,self.Data),
+            "answer":AnswerScene(self.screen,self.Data),
         }
 
         
