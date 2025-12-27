@@ -122,6 +122,7 @@ class Data:
         self.color_b = 255
         self.ready_to_ques = False
         self.need_reset = False
+        self.menuing = True
         self.distance = 0
         self.current_question = 1
         self.max_question = 5
@@ -889,7 +890,7 @@ class AnswerScene:
         self.Data = data
         self.font = pygame.font.Font(None,100)
         self.map = self.Data.map
-        self.mapimg = self.Data.get_image(MAP_IMG_PATH[1])
+        self.mapimg = self.Data.get_image(MAP_IMG_PATH[self.map])
         self.mapimg_scaled = None
         self.screen = screen
         self.finished = False
@@ -898,97 +899,134 @@ class AnswerScene:
         self.scale_bool = False
         self.finalzahyou = None
         self.final_img = None # 最初は空にしておく
+        self.crop_x = None
+        self.crop_y = None
+        self.view_width = None
+        self.view_height = None
+        self.margin = 1.2
+        self.min_view_width = 800
+        self.min_view_height = 400
     
     def scaling_image(self):
-        screen_rect = self.screen.get_rect()
-        sw , sh = screen_rect.size
-        image_x  = self.mapimg.get_rect().width
-        image_y  = self.mapimg.get_rect().height
-        
+        # ===== 画面・画像サイズ =====
+        sw, sh = self.screen.get_size()
+        image_x, image_y = self.mapimg.get_size()
+
+        # ===== 座標取得 =====
         ansx = self.Data.getAnsX()
         ansy = self.Data.getAnsY()
         playerx = self.Data.getPlayerX()
         playery = self.Data.getPlayerY()
 
-        dx = abs(ansx - playerx)
-        dy = abs(ansy - playery)
-        
-        dx = max(dx,1)
-        dy = max(dy,1)
+        dx = max(abs(ansx - playerx), 1)
+        dy = max(abs(ansy - playery), 1)
 
         mid_x = (ansx + playerx) / 2
         mid_y = (ansy + playery) / 2
 
-        view_width = 0
-        view_height = 0
-        if dx > dy:
-            scale = image_x / dx
-            view_width = image_x / scale
-            view_height = image_x / scale * (9/16)
+        # ===== 画面アスペクト比 =====
+        screen_ratio = sw / sh
+
+        # ===== 表示領域サイズ計算 =====
+        if dx / dy > screen_ratio:
+            view_width = dx
+            view_height = dx / screen_ratio
         else:
-            scale = image_y / dy
-            view_height = image_y / scale
-            view_width = image_y / scale * (16/9)
+            view_height = dy
+            view_width = dy * screen_ratio
 
+        view_width *= self.margin
+        view_height *= self.margin
 
-        
-        crop_x = mid_x - view_width / 2
-        crop_y = mid_y - view_height / 2
+        view_width = int(view_width)
+        view_height = int(view_height)
 
-        crop_rect = pygame.Rect(int(crop_x),int(crop_y),int(view_width),int(view_height))
+        view_width  = max(view_width,  self.min_view_width)
+        view_height = max(view_height, self.min_view_height)
+        # ===== 切り抜きRect =====
+        crop_x = int(mid_x - view_width / 2)
+        crop_y = int(mid_y - view_height / 2)
+        crop_rect = pygame.Rect(crop_x, crop_y, view_width, view_height)
 
-        try:
+        # ===== ① 画像内に収まる場合 =====
+        if crop_rect.left >= 0 and crop_rect.top >= 0 and \
+        crop_rect.right <= image_x and crop_rect.bottom <= image_y:
+
             sub_image = self.mapimg.subsurface(crop_rect)
-            
-            self.mapimg_scaled = pygame.transform.smoothscale(sub_image,(sw,sh))
 
-        except ValueError:
-            print("Focus area is out of bounds")
+        # ===== ② はみ出す場合：黒背景キャンバス =====
+        else:
+            canvas = pygame.Surface((view_width, view_height))
+            canvas.fill((0, 0, 0))
 
+            # 元画像を貼る位置
+            blit_x = -crop_x
+            blit_y = -crop_y
 
-    def keisan(self):
-        px = self.Data.getPlayerX()
-        py = self.Data.getPlayerY()
+            canvas.blit(self.mapimg, (blit_x, blit_y))
+            sub_image = canvas
+
+        # ===== 最終変形 =====
+        self.mapimg_scaled = pygame.transform.smoothscale(
+            sub_image, (sw, sh)
+        )
+
+        self.crop_x = crop_x
+        self.crop_y = crop_y
+        self.view_width = view_width
+        self.view_height = view_height
+
+    def draw_points(self):
+        sw, sh = self.screen.get_size()
+
+        crop_x = self.crop_x
+        crop_y = self.crop_y
+        view_width = self.view_width
+        view_height = self.view_height
+
+        scale_x = sw / view_width
+        scale_y = sh / view_height
+
+        # 正解位置
         ax = self.Data.getAnsX()
         ay = self.Data.getAnsY()
+        ans_screen_x = (ax - crop_x) * scale_x
+        ans_screen_y = (ay - crop_y) * scale_y
 
-        midle_x = (px + ax) // 2
-        midle_y = (py + ay) // 2
+        # プレイヤー位置
+        px = self.Data.getPlayerX()
+        py = self.Data.getPlayerY()
+        player_screen_x = (px - crop_x) * scale_x
+        player_screen_y = (py - crop_y) * scale_y
 
-        dx = abs(px - ax)
-        dy = abs(py - ay)
-        print(self.mapimg.get_size()[1])
-        print(self.mapimg.get_size()[0])
+        pygame.draw.circle(
+            self.screen, (255, 0, 0),
+            (int(ans_screen_x), int(ans_screen_y)), 8
+        )
 
-        print(dx)
-        print(dy)
-        if(dx < dy):
-            self.scale = min(self.mapimg.get_size()[1]/dy,4)
-        else:
-            self.scale = min(self.mapimg.get_size()[0]/dx,4)
+        pygame.draw.circle(
+            self.screen, (0, 255, 0),
+            (int(player_screen_x), int(player_screen_y)), 8
+        )
 
-        print(self.scale)
-        self.mapimg_scaled = pygame.transform.scale(self.mapimg,(int(self.mapimg.get_rect().width * self.scale),int(self.mapimg.get_rect().height * self.scale)))
-        self.screen.blit(self.mapimg_scaled,(0,0))
-        
 
     def update(self):
+        self.map = self.Data.map
+        self.mapimg = self.Data.get_image(MAP_IMG_PATH[self.map])
         if(self.mapimg_scaled == None):
             self.scaling_image()
 
     def draw(self):
         if(not self.mapimg_scaled == None):
             self.screen.blit(self.mapimg_scaled,(0,0))
+            self.draw_points()
 
-#    def draw(self):
-#        pygame.draw.line(self.screen,(255,255,255),(0,0),(1920,1080),20)
-#        self.screen.blit(self.final_img, (0, 0))
-    
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
             self.finished = True
             self.next_scene = "viewer"
             self.mapimg_scaled == None
+            self.mapimg == None
         
 
 class ResultScene:
