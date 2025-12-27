@@ -37,20 +37,42 @@ class Hitmark:
         self.screen = screen
         self.x = x 
         self.y = y 
-        self.r = 40.0
+        self.origin_r = 40.0
+        self.r = self.origin_r
         self.color = 0
         self.speed = 0.8
+        self.step = None
+
+        self.target_r = self.Data.getColorR() #255
+        self.target_g = self.Data.getColorG() #255
+        self.target_b = self.Data.getColorB() #255
+
+        self.get_step()
+
+        self.dr_step = (255.0 - self.target_r) / self.step
+        self.dg_step = (255.0 - self.target_g) / self.step
+        self.db_step = (255.0 - self.target_b) / self.step
+
         
+    def get_step(self):
+        self.step = self.r // self.speed
+
     def update_size(self):
         self.r -= self.speed
-        self.color += 4
-        
+        if self.r < 0:
+            self.r = 0
+
     def draw(self, screen):
         if self.r > 0:
-            cr = self.Data.getColorR()
-            cg = self.Data.getColorG()
-            cb = self.Data.getColorB()
-            pygame.draw.circle(screen,(cr,230 - cg,230 - cb) , (int(self.x), int(self.y)) , int(self.r))
+            
+            ratio = 1.0 - (self.r / self.origin_r)
+            
+            curr_r = 255 + (self.target_r - 255) * ratio
+            curr_g = 255 + (self.target_g - 255) * ratio
+            curr_b = 255 + (self.target_b - 255) * ratio
+
+            color = (int(curr_r),int(curr_g),int(curr_b))
+            pygame.draw.circle(screen,color , (int(self.x), int(self.y)) , int(self.r))
         
     def is_dead(self):
         return self.r <= 0
@@ -63,7 +85,7 @@ class Perticle:
         self.x = x 
         self.y = y 
         self.r = 5.0
-        self.g = 0.01
+        self.g = 4
         self.counter = 0
         self.max_counter = 30
         self.color_usui = random.uniform(0,240)
@@ -75,12 +97,14 @@ class Perticle:
 
     def update_counter(self):
         self.counter += 1
+        self.y += self.g
 
     def draw(self, screen):
         if self.counter < self.max_counter:
             cr = self.Data.getColorR()
             cg = self.Data.getColorG()
             cb = self.Data.getColorB()
+
             pygame.draw.circle(screen,(cr,cg,cb) , (int(self.x) + (self.counter  * self.v_x * 3.5), int(self.y) + (self.counter * self.v_y * 3.5)) , int(self.r))
         
     def is_dead(self):
@@ -94,8 +118,8 @@ class Data:
         self.player_y = None
         self.map = 1
         self.color_r = 255
-        self.color_g = 0
-        self.color_b = 0
+        self.color_g = 255
+        self.color_b = 255
         self.ready_to_ques = False
         self.need_reset = False
         self.distance = 0
@@ -155,16 +179,30 @@ class MenuScene:
         self.map1button = MenuMapButton(self.screen,self.Data,1)
         self.map2button = MenuMapButton(self.screen,self.Data,2)
         self.map3button = MenuMapButton(self.screen,self.Data,3)
+        self.colorvar_r = MenuColorBar(self.screen,self.Data,"red")
+        self.colorvar_g = MenuColorBar(self.screen,self.Data,"green")
+        self.colorvar_b = MenuColorBar(self.screen,self.Data,"blue")
 
-    def buttondraw(self):
-        self.map1button.draw()
-        self.map2button.draw()
-        self.map3button.draw()
 
     def buttonupdate(self):
         self.map1button.update()
         self.map2button.update()
         self.map3button.update()
+
+    def barupdate(self):
+        self.colorvar_r.update()
+        self.colorvar_g.update()
+        self.colorvar_b.update()
+
+    def drawbutton(self):
+        self.map1button.draw()
+        self.map2button.draw()
+        self.map3button.draw()
+
+    def drawbar(self):
+        self.colorvar_r.draw()
+        self.colorvar_g.draw()
+        self.colorvar_b.draw()
 
     def any_button_pushed(self):
         if (self.map1button.button_pushed == True):
@@ -179,19 +217,26 @@ class MenuScene:
         
     def update(self):
         self.buttonupdate()
+        self.barupdate()
         pass
 
     def draw(self):
         self.screen.fill((0,0,0))
         text = self.font.render("Press any key to exit", True,(255,255,255))
         rect = text.get_rect(center = self.screen.get_rect().center)
+        pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(400,300),50)
         self.screen.blit(text,rect)
-        self.buttondraw()
+        self.drawbutton()
+        self.drawbar()
 
     def handle_events(self,event):
         self.map1button.handle_events(event)
         self.map2button.handle_events(event)
         self.map3button.handle_events(event)
+
+        self.colorvar_r.handle_events(event)
+        self.colorvar_g.handle_events(event)
+        self.colorvar_b.handle_events(event)
 
         if(self.any_button_pushed()):
             self.Data.map = self.any_button_pushed()
@@ -204,18 +249,89 @@ class MenuMapButton:
     def __init__(self,screen,data,map):
         self.Data = data
         self.screen = screen
-        self.font = pygame.font.Font(None,60)
+        self.font = pygame.font.Font(None,50)
         self.map = map
         self.width = 1000
         self.height = 50
         self.left_top_x = None
+        self.offset= 20
         self.x1 = SCREEN_SIZE_CENTER_X - int(self.width / 2)
         self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) * self.map
         self.x2 = self.x1 + self.width
-        self.y2 = self.y1 + self.height
+        self.y2 = self.y1 + self.height - self.offset
+        self.color = 150
+        self.button_pushed = False
+        
+    def check_on_mouse(self):
+        mx,my = pygame.mouse.get_pos()
+        if(self.x1 < mx and mx < self.x2) and (self.y1 < my and my < self.y2):
+            self.change_color("light")
+            return True
+        else:
+            self.change_color("dark")
+            return False
+
+    def change_color(self,str):
+        if(str == "light"):
+            self.color = 230
+        if(str == "dark"):
+            self.color = 150
+    
+    def drawMapStr(self):
+        f = f"MAP{self.map}"
+        
+        text = self.font.render(f,True,(255,255,255))
+        rect = text.get_rect()
+        x = SCREEN_SIZE_CENTER_X - rect.width/2
+        y = SCREEN_SIZE_CENTER_Y +self.height * self.map
+        self.screen.blit(text,(x,y))
+
+    def update(self):
+        self.check_on_mouse()
+        pass
+    def draw(self):
+        pygame.draw.rect(self.screen,(self.color,self.color,self.color),(self.x1, self.y1,self.width,self.height -self.offset))
+        self.drawMapStr()
+
+    def handle_events(self,event):
+        if((event.type == MOUSEBUTTONDOWN) and (event.button == 1) and (self.check_on_mouse())):
+            self.button_pushed = True
+    
+class MenuColorBar:
+    def __init__(self,screen,data,color):
+        self.Data = data
+        self.screen = screen
+        self.font = pygame.font.Font(None,60)
+        self.width = 20
+        self.height = 50
+        self.left_top_x = None
         self.color = 150
         self.button_pushed = False
         self.offset= 20
+        self.bar_value = 0
+        self.color_name = color
+        self.color= 0
+        self.color_value = 0
+        self.map = None
+        self.bar_x_value = SCREEN_SIZE_CENTER_X - int(self.width / 2)
+        self.dragging = False
+        self.max_zahyou = 1400
+        self.min_zahyou = 500
+
+
+        if self.color_name == "red":
+            self.map = 1
+        elif self.color_name == "green":
+            self.map = 2
+        elif self.color_name == "blue":
+            self.map = 3
+        else:
+            self.map = 1
+        
+        self.x1 = SCREEN_SIZE_CENTER_X - int(self.width / 2) + self.bar_value#左上の基準点
+        self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) + 200  + self.map * 40
+        self.x2 = self.x1 + self.width
+        self.y2 = self.y1 + self.height - self.offset
         
     def check_on_mouse(self):
         mx,my = pygame.mouse.get_pos()
@@ -232,16 +348,50 @@ class MenuMapButton:
         if(str == "dark"):
             self.color = 150
 
+    def update_values(self):
+        self.x1 = self.bar_x_value - int(self.width / 2) #左上の基準点
+        self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) + 200  + self.map * 40
+        self.x2 = self.x1 + self.width
+        self.y2 = self.y1 + self.height - self.offset
+
+        self.color_value = (self.max_zahyou - self.bar_x_value) / (self.max_zahyou - self.min_zahyou)
+        self.color_value = 255 - int(255 * self.color_value)
+
+    def updateColors(self):
+        if(self.color_name == "red"):
+            self.Data.setColorR(self.color_value)
+        elif(self.color_name == "green"):
+            self.Data.setColorG(self.color_value)
+        elif(self.color_name == "blue"):
+            self.Data.setColorB(self.color_value)
+    
     def update(self):
         self.check_on_mouse()
+        self.update_values()
+        self.updateColors()
         pass
     def draw(self):
-        pygame.draw.rect(self.screen,(self.color,self.color,self.color),(self.x1, self.y1,self.width,self.height -self.offset))
+        pygame.draw.line(self.screen,(128,128,128),(self.min_zahyou,int(((self.y1+self.y2)/2))),(self.max_zahyou, int((self.y1 + self.y2)/2)),5)
+        pygame.draw.rect(self.screen,(self.color,self.color,self.color),(self.x1, self.y1,self.width,self.height - self.offset))
 
     def handle_events(self,event):
         if((event.type == MOUSEBUTTONDOWN) and (event.button == 1) and (self.check_on_mouse())):
+            self.dragging = True
             self.button_pushed = True
-    
+
+        if event.type == MOUSEBUTTONDOWN and event.button == 1 and (self.check_on_mouse()):
+            self.dragging = True
+            mx,my = event.pos
+
+        #ドラッグ中========================================
+        if event.type == MOUSEMOTION and self.dragging:
+            mx,my = event.pos
+            if((self.min_zahyou) < mx and (mx < self.max_zahyou)):
+                self.bar_x_value = mx
+            
+        if event.type == MOUSEBUTTONUP and event.button == 1:
+            self.dragging = False
+
 
 class ViwerScene: #推測画面クラス=============================================
     def __init__(self,screen,data):
@@ -439,8 +589,7 @@ class ViwerScene: #推測画面クラス========================================
         cg = self.Data.getColorG()
         cb = self.Data.getColorB()
         pygame.draw.line(self.screen,(cr,cg,cb),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),40)
-        pygame.draw.line(self.screen,(255,150,150),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),30)
-        pygame.draw.line(self.screen,(255,230,230),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
+        pygame.draw.line(self.screen,(255,250,250),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
                 
     #------------------------------------------------------------------
     def update(self):
@@ -466,9 +615,6 @@ class ViwerScene: #推測画面クラス========================================
             mx,my = event.pos
             self.change_laser_origin(mx,my)
         
-        self.Data.setColorR(0)
-
-
 
 class MapScene: #マップクラス=============================================
     def __init__(self,screen,data):
