@@ -129,7 +129,22 @@ class Data:
         self.map2_chosearea_points = None
         self.map3_chosearea_points = None
         self.image_chache = {}
+        self.timer_ms = 0
+        self.timer_active = False
         
+    def reset_timer(self):
+        self.timer_ms = 0
+        self.timer_active = True
+
+    def stop_timer(self):
+        self.timer_active = False
+
+    def get_time_str(self):
+        minutes = self.timer_ms // 60000
+        seconds = (self.timer_ms % 60000) // 1000
+        ms = (self.timer_ms % 1000) // 10
+        return f"{minutes:02}:{seconds:02}:{ms:02}"
+
     def get_image(self,path):
         if path not in self.image_chache:
             print(f"Loading image: {path}")
@@ -340,6 +355,7 @@ class MenuMapButton:
 
     def handle_events(self,event):
         if((event.type == MOUSEBUTTONDOWN) and (event.button == 1) and (self.check_on_mouse())):
+            self.Data.reset_timer()
             self.button_pushed = True
     
 class MenuColorBar:
@@ -441,6 +457,7 @@ class MenuColorBar:
 class ViwerScene: #推測画面クラス=============================================
     def __init__(self,screen,data):
         self.Data = data
+        self.font = pygame.font.Font(None,100)
         self.screen = screen
         self.finished = False
         self.next_scene = None
@@ -649,6 +666,12 @@ class ViwerScene: #推測画面クラス========================================
         pygame.draw.line(self.screen,(255,250,250),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
                 
     #------------------------------------------------------------------
+
+    def draw_timer(self):
+        time_text = self.font.render(self.Data.get_time_str(), True, (0, 255, 0))
+        timer_rect = time_text.get_rect()
+        self.screen.blit(time_text, (SCREEN_SIZE[0] - timer_rect.width, 20)) 
+
     def update(self):
         self.pointing()
         self.is_map_correct()
@@ -662,6 +685,7 @@ class ViwerScene: #推測画面クラス========================================
                 self.finished = True
                 self.Data.resetCurrentQues()
                 self.next_scene = "result"
+                self.Data.stop_timer()
                 
             self.Data.setNeedReset(False)
 
@@ -673,6 +697,7 @@ class ViwerScene: #推測画面クラス========================================
         self.draw_marks()
         self.draw_perticles()
         self.draw_laser()
+        self.draw_timer()
 
     def handle_events(self,event):
         if(event.type == KEYDOWN and event.key == K_m):
@@ -862,6 +887,7 @@ class MapScene: #マップクラス=============================================
 class AnswerScene:
     def __init__(self,screen,data):
         self.Data = data
+        self.font = pygame.font.Font(None,100)
         self.map = self.Data.map
         self.mapimg = pygame.image.load(MAP_IMG_PATH[self.map]).convert_alpha()
         self.mapimg_scaled = None
@@ -898,12 +924,12 @@ class AnswerScene:
         self.screen.blit(self.mapimg_scaled,(0,0))
         
 
+
     def update(self):
         pass
 
     def draw(self):
         pygame.draw.line(self.screen,(255,255,255),(0,0),(1920,1080),20)
-        pass
     
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
@@ -914,18 +940,25 @@ class AnswerScene:
 class ResultScene:
     def __init__(self,screen,data):
         self.Data = data
+        self.font = pygame.font.Font(None,100)
         self.map = self.Data.map
         self.screen = screen
         self.finished = False
         self.next_scene = None
 
+    def draw_timer(self):
+        time_text = self.font.render(self.Data.get_time_str(), True, (0, 255, 0))
+        timer_rect = time_text.get_rect()
+        x = SCREEN_SIZE_CENTER_X - (timer_rect.width //2)
+        y = SCREEN_SIZE_CENTER_Y - (timer_rect.height //2)
+        self.screen.blit(time_text, (x,y)) # 画面左上に表示
 
     def update(self):
         pass
 
     def draw(self):
-        pygame.draw.line(self.screen,(255,255,255),(0,0),(1920,1080),20)
-        pass
+        self.screen.fill((0,0,0))
+        self.draw_timer()
     
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
@@ -968,6 +1001,10 @@ class Game:#=================================ゲームクラス=================
     
     def update(self):
         self.scene.update()
+        dt = self.clock.get_time()
+
+        if self.Data.timer_active:
+            self.Data.timer_ms += dt
 
         if self.scene.next_scene:
             next_name = self.scene.next_scene
