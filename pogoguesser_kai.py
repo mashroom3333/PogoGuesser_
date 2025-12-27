@@ -123,7 +123,35 @@ class Data:
         self.ready_to_ques = False
         self.need_reset = False
         self.distance = 0
+        self.current_question = 1
+        self.max_question = 5
+        self.map1_chosearea_points = None
+        self.map2_chosearea_points = None
+        self.map3_chosearea_points = None
+        self.image_chache = {}
+        
+    def get_image(self,path):
+        if path not in self.image_chache:
+            print(f"Loading image: {path}")
+            self.image_chache[path] = pygame.image.load(path).convert_alpha()
+        return self.image_chache[path]
     
+    def getChoseableArea(self,map):
+        if(map == 1):
+            return self.map1_chosearea_points
+        if(map == 2):
+            return self.map2_chosearea_points
+        if(map == 3):
+            return self.map3_chosearea_points
+    
+    def setChoseableArea(self,map,points):
+        if(map == 1):
+            self.map1_chosearea_points = points
+        if(map == 2):
+            self.map2_chosearea_points = points
+        if(map == 3):
+            self.map3_chosearea_points = points
+            
     def setColorR(self,x):
         self.color_r = x
     def setColorG(self,x):
@@ -167,6 +195,19 @@ class Data:
         return self.ans_x
     def getAnsY(self):
         return self.ans_y
+
+    def addCurrentQ(self):
+        self.current_question += 1
+        
+    def isQuestionContinue(self):
+        if(self.current_question <= self.max_question):
+            return True
+        else:
+            return False
+
+    def resetCurrentQues(self):
+        self.current_question = 1
+    
 
 class MenuScene:
     def __init__(self,screen,data):
@@ -238,10 +279,14 @@ class MenuScene:
         self.colorvar_g.handle_events(event)
         self.colorvar_b.handle_events(event)
 
-        if(self.any_button_pushed()):
-            self.Data.map = self.any_button_pushed()
-            te = f"map{self.Data.map} was chosed"
-            print(te)
+        pushed_map = self.any_button_pushed()
+        if pushed_map is not None:
+            self.Data.map = pushed_map
+            #遷移する前にボタンのフラグをリセット
+            self.map1button.button_pushed = False
+            self.map2button.button_pushed = False
+            self.map3button.button_pushed = False
+
             self.finished = True
             self.next_scene = "viewer"
 
@@ -415,12 +460,13 @@ class ViwerScene: #推測画面クラス========================================
         self.marks = []
         self.perticles = []
         self.hit = None
+        self.question_finished = False
         
         self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.Data.map]).convert_alpha()
         self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
         
-        self.choseable_points = []
-        self.make_valid_points()
+        if(self.Data.getChoseableArea(self.map) == None):
+            self.Data.setChoseableArea(self.map,self.make_valid_points())
         self.set_ans()
         
         self.set_mapimg()
@@ -428,11 +474,14 @@ class ViwerScene: #推測画面クラス========================================
     
     def make_valid_points(self):
         w,h = self.choseable_mask.get_size()
+        a = []
         
         for y in range(h):
             for x in range(w):
                 if self.choseable_mask.get_at((x,y)):
-                    self.choseable_points.append((x,y))
+                    a.append((x,y))
+                    
+        return a
 
 
     def image_to_screen(self,img_x, img_y, center_x, center_y, scale):
@@ -448,7 +497,7 @@ class ViwerScene: #推測画面クラス========================================
         return img_x, img_y
 
     def set_ans(self):
-        x,y = random.choice(self.choseable_points)
+        x,y = random.choice(self.Data.getChoseableArea(self.map))
         self.Data.setAnsX(x) 
         self.Data.setAnsY(y) 
         
@@ -456,7 +505,8 @@ class ViwerScene: #推測画面クラス========================================
         self.map = map
 
     def set_mapimg(self):
-        self.mapimg = pygame.image.load(MAP_FOR_GUESS_IMG_PATH[self.map]).convert_alpha()
+        path =  MAP_FOR_GUESS_IMG_PATH[self.map]
+        self.mapimg = self.Data.get_image(path)
         
     def reset(self):
         self.set_ans()
@@ -466,8 +516,15 @@ class ViwerScene: #推測画面クラス========================================
 
     def reset_map(self):
         self.set_map(self.Data.map)
-        self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.Data.map]).convert_alpha()
+
+        path = CHOSEABLE_AREA_IMG_PATH[self.map]
+        self.choseable_img = self.Data.get_image(path)
         self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
+        
+        if self.Data.getChoseableArea(self.map) is None:
+            points = self.make_valid_points()
+            self.Data.setChoseableArea(self.map, points)
+        # -----------------------------------
         
         self.choseable_points = []
         self.make_valid_points()
@@ -597,7 +654,18 @@ class ViwerScene: #推測画面クラス========================================
         self.is_map_correct()
         if(self.Data.getNeedReset()):
             self.reset()
+            self.Data.addCurrentQ()
+            if(self.Data.isQuestionContinue()):
+                None
+            else:
+                self.question_finished == True
+                self.finished = True
+                self.Data.resetCurrentQues()
+                self.next_scene = "result"
+                
             self.Data.setNeedReset(False)
+
+        
 
     def draw(self):
         self.screen.fill((0,0,0))
@@ -607,7 +675,7 @@ class ViwerScene: #推測画面クラス========================================
         self.draw_laser()
 
     def handle_events(self,event):
-        if(event.type == KEYDOWN):
+        if(event.type == KEYDOWN and event.key == K_m):
             self.finished = True
             self.next_scene = "map"
 
@@ -843,6 +911,28 @@ class AnswerScene:
             self.next_scene = "viewer"
         
 
+class ResultScene:
+    def __init__(self,screen,data):
+        self.Data = data
+        self.map = self.Data.map
+        self.screen = screen
+        self.finished = False
+        self.next_scene = None
+
+
+    def update(self):
+        pass
+
+    def draw(self):
+        pygame.draw.line(self.screen,(255,255,255),(0,0),(1920,1080),20)
+        pass
+    
+    def handle_events(self,event):
+        if(event.type == MOUSEBUTTONDOWN and event.button == 3):
+            pass
+            self.finished = True
+            self.next_scene = "menu"
+        
 class Game:#=================================ゲームクラス================================
     def __init__(self):
         pygame.init()
@@ -857,6 +947,7 @@ class Game:#=================================ゲームクラス=================
             "map":MapScene(self.screen,self.Data),
             "viewer":ViwerScene(self.screen,self.Data),
             "answer":AnswerScene(self.screen,self.Data),
+            "result":ResultScene(self.screen,self.Data),
         }
 
         
@@ -869,6 +960,9 @@ class Game:#=================================ゲームクラス=================
         for event in pygame.event.get():
             if event.type ==pygame.QUIT:
                 self.running = False
+            if event.type == KEYDOWN and event.key == K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
             else:
                 self.scene.handle_events(event)
     
