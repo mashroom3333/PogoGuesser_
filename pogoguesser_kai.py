@@ -112,10 +112,10 @@ class Perticle:
 
 class Data:
     def __init__(self):
-        self.ans_x = None
-        self.ans_y = None
-        self.player_x = None
-        self.player_y = None
+        self.ans_x = 0
+        self.ans_y = 0
+        self.player_x = 0
+        self.player_y = 0
         self.map = 1
         self.color_r = 255
         self.color_g = 255
@@ -889,7 +889,7 @@ class AnswerScene:
         self.Data = data
         self.font = pygame.font.Font(None,100)
         self.map = self.Data.map
-        self.mapimg = pygame.image.load(MAP_IMG_PATH[self.map]).convert_alpha()
+        self.mapimg = self.Data.get_image(MAP_IMG_PATH[1])
         self.mapimg_scaled = None
         self.screen = screen
         self.finished = False
@@ -897,6 +897,54 @@ class AnswerScene:
         self.scale = 0
         self.scale_bool = False
         self.finalzahyou = None
+        self.final_img = None # 最初は空にしておく
+    
+    def scaling_image(self):
+        screen_rect = self.screen.get_rect()
+        sw , sh = screen_rect.size
+        image_x  = self.mapimg.get_rect().width
+        image_y  = self.mapimg.get_rect().height
+        
+        ansx = self.Data.getAnsX()
+        ansy = self.Data.getAnsY()
+        playerx = self.Data.getPlayerX()
+        playery = self.Data.getPlayerY()
+
+        dx = abs(ansx - playerx)
+        dy = abs(ansy - playery)
+        
+        dx = max(dx,1)
+        dy = max(dy,1)
+
+        mid_x = (ansx + playerx) / 2
+        mid_y = (ansy + playery) / 2
+
+        view_width = 0
+        view_height = 0
+        if dx > dy:
+            scale = image_x / dx
+            view_width = image_x / scale
+            view_height = image_x / scale * (9/16)
+        else:
+            scale = image_y / dy
+            view_height = image_y / scale
+            view_width = image_y / scale * (16/9)
+
+
+        
+        crop_x = mid_x - view_width / 2
+        crop_y = mid_y - view_height / 2
+
+        crop_rect = pygame.Rect(int(crop_x),int(crop_y),int(view_width),int(view_height))
+
+        try:
+            sub_image = self.mapimg.subsurface(crop_rect)
+            
+            self.mapimg_scaled = pygame.transform.smoothscale(sub_image,(sw,sh))
+
+        except ValueError:
+            print("Focus area is out of bounds")
+
 
     def keisan(self):
         px = self.Data.getPlayerX()
@@ -924,17 +972,23 @@ class AnswerScene:
         self.screen.blit(self.mapimg_scaled,(0,0))
         
 
-
     def update(self):
-        pass
+        if(self.mapimg_scaled == None):
+            self.scaling_image()
 
     def draw(self):
-        pygame.draw.line(self.screen,(255,255,255),(0,0),(1920,1080),20)
+        if(not self.mapimg_scaled == None):
+            self.screen.blit(self.mapimg_scaled,(0,0))
+
+#    def draw(self):
+#        pygame.draw.line(self.screen,(255,255,255),(0,0),(1920,1080),20)
+#        self.screen.blit(self.final_img, (0, 0))
     
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
             self.finished = True
             self.next_scene = "viewer"
+            self.mapimg_scaled == None
         
 
 class ResultScene:
@@ -988,6 +1042,8 @@ class Game:#=================================ゲームクラス=================
 
     def set_scene(self,name):
         self.scene = self.scenes[name]
+        if name == "answer":
+            self.scene.scaling_image()
 
     def handle_events(self):
         for event in pygame.event.get():
