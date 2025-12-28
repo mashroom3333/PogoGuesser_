@@ -990,7 +990,7 @@ class AnswerScene:
         self.view_height = None
         self.margin = 1.2
         self.min_view_width = 300
-        self.min_view_height = 190
+        self.min_view_height = int(300 * (9/16))
         self.pogo_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["pogo"])
         self.pogo_img = pygame.transform.smoothscale(self.pogo_img,(60,60))
         self.flag_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["flag"])
