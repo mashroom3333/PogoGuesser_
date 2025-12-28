@@ -147,7 +147,7 @@ class Data:
         self.menuing = True
         self.distance = 0
         self.current_question = 1
-        self.max_question = 3
+        self.max_question = 10
         self.map1_chosearea_points = None
         self.map2_chosearea_points = None
         self.map3_chosearea_points = None
