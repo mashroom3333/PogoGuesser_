@@ -31,6 +31,11 @@ CHOSEABLE_AREA_IMG_PATH = {
     3: "assets/map3_choseable_area.png",
 }
 
+ANOTHER_ASSETS_IMG_PATH = {
+    "pogo": "assets/pogo.png",
+    "flag": "assets/flag.png",
+}
+
 class Hitmark:
     def __init__(self,screen,x,y,data):
         self.Data = data
@@ -906,7 +911,12 @@ class AnswerScene:
         self.margin = 1.2
         self.min_view_width = 800
         self.min_view_height = 400
+        self.pogo_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["pogo"])
+        self.flag_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["flag"])
+        self.pogo_rect = self.pogo_img.get_rect()
+        self.flag_rect = self.flag_img.get_rect()
     
+
     def scaling_image(self):
         # ===== 画面・画像サイズ =====
         sw, sh = self.screen.get_size()
@@ -999,6 +1009,16 @@ class AnswerScene:
         player_screen_x = (px - crop_x) * scale_x
         player_screen_y = (py - crop_y) * scale_y
 
+
+        self.screen.blit(self.flag_img,(ans_screen_x,ans_screen_y))
+        self.screen.blit(self.pogo_img,(player_screen_x,player_screen_y))
+
+        pygame.draw.line(
+            self.screen,(255,255,255),
+            (int(ans_screen_x),int(ans_screen_y)),(int(player_screen_x),int(player_screen_y)),
+            10
+        )
+
         pygame.draw.circle(
             self.screen, (255, 0, 0),
             (int(ans_screen_x), int(ans_screen_y)), 8
@@ -1008,6 +1028,7 @@ class AnswerScene:
             self.screen, (0, 255, 0),
             (int(player_screen_x), int(player_screen_y)), 8
         )
+
 
 
     def update(self):
@@ -1025,8 +1046,8 @@ class AnswerScene:
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
             self.finished = True
             self.next_scene = "viewer"
-            self.mapimg_scaled == None
-            self.mapimg == None
+            self.mapimg_scaled = None
+            self.mapimg = None
         
 
 class ResultScene:
@@ -1081,7 +1102,9 @@ class Game:#=================================ゲームクラス=================
     def set_scene(self,name):
         self.scene = self.scenes[name]
         if name == "answer":
-            self.scene.scaling_image()
+            self.scene = AnswerScene(self.screen,self.Data)
+        else:
+            self.scene = self.scenes[name]
 
     def handle_events(self):
         for event in pygame.event.get():
