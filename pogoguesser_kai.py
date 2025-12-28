@@ -7,6 +7,8 @@ import numpy as np
 from pygame.locals import*
 from dataclasses import dataclass
 
+
+
 SCREEN_SIZE = (1920,1080)
 SCREEN_SIZE_X = SCREEN_SIZE[0]
 SCREEN_SIZE_Y = SCREEN_SIZE[1]
@@ -14,28 +16,31 @@ SCREEN_SIZE_CENTER_X = SCREEN_SIZE_X // 2
 SCREEN_SIZE_CENTER_Y = SCREEN_SIZE_Y // 2
 
 MAP_FOR_GUESS_IMG_PATH = {
-    1: "assets/map1.png",
-    2: "assets/map2.png",
-    3: "assets/map3.png",
+    1: "assets/images/map1.png",
+    2: "assets/images/map2.png",
+    3: "assets/images/map3.png",
 }
 
 MAP_IMG_PATH = {
-    1: "assets/map1.jpeg",
-    2: "assets/map2.jpeg",
-    3: "assets/map3.jpeg",
+    1: "assets/images/map1.jpeg",
+    2: "assets/images/map2.jpeg",
+    3: "assets/images/map3.jpeg",
 }
 
 CHOSEABLE_AREA_IMG_PATH = {
-    1: "assets/map1_choseable_area.png",
-    2: "assets/map2_choseable_area.png",
-    3: "assets/map3_choseable_area.png",
+    1: "assets/images/map1_choseable_area.png",
+    2: "assets/images/map2_choseable_area.png",
+    3: "assets/images/map3_choseable_area.png",
 }
 
 ANOTHER_ASSETS_IMG_PATH = {
-    "pogo": "assets/pogo.png",
-    "flag": "assets/flag.png",
+    "pogo": "assets/images/pogo.png",
+    "flag": "assets/images/flag.png",
 }
 
+
+BACKGROUND_IMG_PATH = ("assets/images/background.jpg")
+FONT_TIMER_PATH = ("assets/fonts/digitalism.ttf")
 DISTANCE_MAX = 100
 
 class Hitmark:
@@ -132,7 +137,7 @@ class Data:
         self.menuing = True
         self.distance = 0
         self.current_question = 1
-        self.max_question = 5
+        self.max_question = 10
         self.map1_chosearea_points = None
         self.map2_chosearea_points = None
         self.map3_chosearea_points = None
@@ -151,7 +156,7 @@ class Data:
         minutes = self.timer_ms // 60000
         seconds = (self.timer_ms % 60000) // 1000
         ms = (self.timer_ms % 1000) // 10
-        return f"{minutes:02}:{seconds:02}:{ms:02}"
+        return f"{minutes:02}m {seconds:02}s {ms:02}ms"
 
     def get_image(self,path):
         if path not in self.image_chache:
@@ -305,10 +310,11 @@ class MenuScene:
         pushed_map = self.any_button_pushed()
         if pushed_map is not None:
             self.Data.map = pushed_map
-            #遷移する前にボタンのフラグをリセット
             self.map1button.button_pushed = False
             self.map2button.button_pushed = False
             self.map3button.button_pushed = False
+            self.Data.resetCurrentQues()
+            self.Data.reset_timer()
 
             self.finished = True
             self.next_scene = "viewer"
@@ -466,6 +472,8 @@ class ViwerScene: #推測画面クラス========================================
     def __init__(self,screen,data):
         self.Data = data
         self.font = pygame.font.Font(None,100)
+        self.font_mini = pygame.font.Font(None,60)
+        self.font_timer = pygame.font.Font(None,100)
         self.screen = screen
         self.finished = False
         self.next_scene = None
@@ -486,6 +494,8 @@ class ViwerScene: #推測画面クラス========================================
         self.perticles = []
         self.hit = None
         self.question_finished = False
+        self.backimg = pygame.image.load(BACKGROUND_IMG_PATH).convert_alpha()
+        self.timer_width_max = 0
         
         self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.Data.map]).convert_alpha()
         self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
@@ -561,11 +571,11 @@ class ViwerScene: #推測画面クラス========================================
     def set_new_ques(self,x,y):
         print("new question")
         if(self.Data.map == 1):
-            g_bairitu =  int(1340/250) #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
+            g_bairitu =  1340/250 #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
         if(self.Data.map == 2):
-            g_bairitu = int(1860/300)
+            g_bairitu = 1860/300
         if(self.Data.map == 3):
-            g_bairitu = int(1300/330) #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
+            g_bairitu = 1300/320 #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
             
         print(self.Data.map)
         print(g_bairitu)
@@ -673,19 +683,44 @@ class ViwerScene: #推測画面クラス========================================
         pygame.draw.line(self.screen,(cr,cg,cb),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),40)
         pygame.draw.line(self.screen,(255,250,250),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
                 
-    #------------------------------------------------------------------
-
     def draw_timer(self):
-        time_text = self.font.render(self.Data.get_time_str(), True, (0, 255, 0))
+        time_text = self.font_timer.render(self.Data.get_time_str(), True, (0, 255, 0))
+        
         timer_rect = time_text.get_rect()
-        self.screen.blit(time_text, (SCREEN_SIZE[0] - timer_rect.width, 20)) 
+        if(self.timer_width_max < timer_rect.width):
+            self.timer_width_max = timer_rect.width
+        self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
+
+    def draw_details(self):
+        text_1 = self.font_mini.render("left click : change laser origin",True,(255,255,255))
+        text_2 = self.font_mini.render("M : map",True,(255,255,255))
+        self.screen.blit(text_1,[0,SCREEN_SIZE[1]-120])
+        self.screen.blit(text_2,[0,SCREEN_SIZE[1]-60])
+        pass
+
+    def draw_current_map_qestion(self):
+        map = self.Data.map
+        map_str = f"MAP:{map}"
+        text_map = self.font.render(map_str,True,(255,255,255))
+        t_rect = text_map.get_rect()
+        tm_width = t_rect.width
+        tm_height = t_rect.height
+        self.screen.blit(text_map,(30,30))
+
+
+        ima = self.Data.current_question
+        max = self.Data.max_question
+        nokori_game_counter =ima
+        mondai_str = f"{nokori_game_counter}/{max}"
+
+        text_mondai = self.font_mini.render(mondai_str,True,(255,255,255))
+        self.screen.blit(text_mondai,(30, tm_height + 30))
 
     def update(self):
         self.pointing()
         self.is_map_correct()
         if(self.Data.getNeedReset()):
             self.reset()
-            self.Data.addCurrentQ()
             if(self.Data.isQuestionContinue()):
                 None
             else:
@@ -701,11 +736,14 @@ class ViwerScene: #推測画面クラス========================================
 
     def draw(self):
         self.screen.fill((0,0,0))
+        self.screen.blit(self.backimg,(0,0))
         self.screen.blit(self.mapimg_scaled,(0,0))
         self.draw_marks()
         self.draw_perticles()
         self.draw_laser()
         self.draw_timer()
+        self.draw_details()
+        self.draw_current_map_qestion()
 
     def handle_events(self,event):
         if(event.type == KEYDOWN and event.key == K_m):
@@ -724,6 +762,7 @@ class MapScene: #マップクラス=============================================
         self.sw,self.sh = SCREEN_SIZE
         self.font = pygame.font.Font(None,60)
         self.font_mini = pygame.font.Font(None,40)
+        self.font_timer = pygame.font.Font(None,100)
         self.finished = False
         self.next_scene = None
         self.map = self.Data.map
@@ -736,6 +775,7 @@ class MapScene: #マップクラス=============================================
         self.img_x = 0
         self.img_y = 0
         self.distance = None
+        self.timer_width_max = 0
 
         self.dragging = False
         self.mouse_moving = False
@@ -832,10 +872,6 @@ class MapScene: #マップクラス=============================================
         return img_x, img_y
 
 
-    def update(self):
-        self.scaling_value()
-        self.is_map_correct()
-        pass
 
     def draw_setumei(self):
         t1 = self.font_mini.render("drag : move",True,(255,255,255))
@@ -847,10 +883,24 @@ class MapScene: #マップクラス=============================================
         self.screen.blit(t3,[0,SCREEN_SIZE[1]-120])
         self.screen.blit(t4,[0,SCREEN_SIZE[1]-60])
 
+    def draw_timer(self):
+        time_text = self.font_timer.render(self.Data.get_time_str(), True, (0, 255, 0))
+        
+        timer_rect = time_text.get_rect()
+        if(self.timer_width_max < timer_rect.width):
+            self.timer_width_max = timer_rect.width
+        self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
+
+    def update(self):
+        self.scaling_value()
+        self.is_map_correct()
+        pass
+
     def draw(self):
         self.screen.fill((0,0,0))
         self.screen.blit(self.mapimg_scaled,(self.img_x,self.img_y))
         self.draw_setumei()
+        self.draw_timer()
 
     def handle_events(self,event):
         if(event.type == KEYDOWN):
@@ -896,7 +946,9 @@ class MapScene: #マップクラス=============================================
 class AnswerScene:
     def __init__(self,screen,data):
         self.Data = data
-        self.font = pygame.font.Font(None,100)
+        self.font = pygame.font.Font(None,160)
+        self.font_mini = pygame.font.Font(None,60)
+        self.font_timer = pygame.font.Font(None,100)
         self.map = self.Data.map
         self.mapimg = self.Data.get_image(MAP_IMG_PATH[self.map])
         self.mapimg_scaled = None
@@ -915,9 +967,12 @@ class AnswerScene:
         self.min_view_width = 800
         self.min_view_height = 400
         self.pogo_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["pogo"])
+        self.pogo_img = pygame.transform.smoothscale(self.pogo_img,(60,60))
         self.flag_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["flag"])
+        self.flag_img = pygame.transform.smoothscale(self.flag_img,(60,60))
         self.pogo_rect = self.pogo_img.get_rect()
         self.flag_rect = self.flag_img.get_rect()
+        self.timer_width_max = 0
     
 
     def scaling_image(self):
@@ -1013,8 +1068,14 @@ class AnswerScene:
         player_screen_y = (py - crop_y) * scale_y
 
 
-        self.screen.blit(self.flag_img,(ans_screen_x,ans_screen_y))
-        self.screen.blit(self.pogo_img,(player_screen_x,player_screen_y))
+        rect_f = self.flag_img.get_rect()
+        flag_x = ans_screen_x - (rect_f.width/2)
+        flag_y = ans_screen_y - (rect_f.height/2)
+
+        rect_p = self.pogo_img.get_rect()
+        pogo_x = player_screen_x - (rect_p.width/2)
+        pogo_y = player_screen_y - (rect_p.height/2)
+        
 
         pygame.draw.line(
             self.screen,(255,255,255),
@@ -1022,15 +1083,17 @@ class AnswerScene:
             5
         )
 
-        pygame.draw.circle(
-            self.screen, (255, 0, 0),
-            (int(ans_screen_x), int(ans_screen_y)), 8
-        )
+        self.screen.blit(self.flag_img,(flag_x,flag_y))
+        self.screen.blit(self.pogo_img,(pogo_x,pogo_y))
+        #pygame.draw.circle(
+        #    self.screen, (255, 0, 0),
+        #    (int(ans_screen_x), int(ans_screen_y)), 8
+        #)
 
-        pygame.draw.circle(
-            self.screen, (0, 255, 0),
-            (int(player_screen_x), int(player_screen_y)), 8
-        )
+        #pygame.draw.circle(
+        #    self.screen, (0, 255, 0),
+        #    (int(player_screen_x), int(player_screen_y)), 8
+        #)
 
     def draw_marubatu(self):
         cx = SCREEN_SIZE_CENTER_X
@@ -1039,9 +1102,6 @@ class AnswerScene:
         r = 100
 
         if(self.is_answer_correct()):
-            r_out = 105
-
-            #pygame.draw.circle(self.screen,(255,255,255),(cx,cy - offset_y), r_out, 15)
             pygame.draw.circle(self.screen,(255,0,0),(cx,cy - offset_y), r, 20)
         else:
             pygame.draw.line(self.screen,(0,0,255),(cx - r,cy - r),(cx + r,cy+r),20)
@@ -1054,11 +1114,20 @@ class AnswerScene:
         td = self.font.render(t_d,True,(255,255,255))
         rect_td = td.get_rect()
         w = rect_td.width
-        t1 = self.font.render("rightClick : next",True,(255,255,255))
+        t1 = self.font_mini.render("rightClick : next",True,(255,255,255))
         rect_t1 = t1.get_rect()
         w1 = rect_t1.width
-        self.screen.blit(t1,[SCREEN_SIZE_CENTER_X-(w1/2),SCREEN_SIZE_CENTER_Y - 300])
-        self.screen.blit(td,[SCREEN_SIZE_CENTER_X- (w/2),SCREEN_SIZE_CENTER_Y-400])
+        self.screen.blit(t1,[SCREEN_SIZE_CENTER_X-(w1/2),SCREEN_SIZE_CENTER_Y + 400])
+        self.screen.blit(td,[SCREEN_SIZE_CENTER_X- (w/2),SCREEN_SIZE_CENTER_Y + 250])
+
+    def draw_timer(self):
+        time_text = self.font_timer.render(self.Data.get_time_str(), True, (0, 255, 0))
+        
+        timer_rect = time_text.get_rect()
+        if(self.timer_width_max < timer_rect.width):
+            self.timer_width_max = timer_rect.width
+        self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
+
 
     def is_answer_correct(self):
         distance = self.Data.getDistance()
@@ -1079,6 +1148,7 @@ class AnswerScene:
             self.draw_points()
             self.draw_marubatu()
             self.draw_distance()
+            self.draw_timer()
 
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
@@ -1087,6 +1157,7 @@ class AnswerScene:
                 self.next_scene = "viewer"
                 self.mapimg_scaled = None
                 self.mapimg = None
+                self.Data.addCurrentQ()
             else:
                 self.finished = True
                 self.next_scene = "menu"
@@ -1097,6 +1168,7 @@ class ResultScene:
         self.Data = data
         self.font = pygame.font.Font(None,100)
         self.map = self.Data.map
+        self.backimg = pygame.image.load(BACKGROUND_IMG_PATH).convert_alpha()
         self.screen = screen
         self.finished = False
         self.next_scene = None
@@ -1113,6 +1185,7 @@ class ResultScene:
 
     def draw(self):
         self.screen.fill((0,0,0))
+        self.screen.blit(self.backimg,(0,0))
         self.draw_timer()
     
     def handle_events(self,event):
