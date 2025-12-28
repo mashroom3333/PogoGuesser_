@@ -36,6 +36,8 @@ ANOTHER_ASSETS_IMG_PATH = {
     "flag": "assets/flag.png",
 }
 
+DISTANCE_MAX = 100
+
 class Hitmark:
     def __init__(self,screen,x,y,data):
         self.Data = data
@@ -792,7 +794,7 @@ class MapScene: #マップクラス=============================================
             self.img_y = center_y - img_cy * self.final_scale
             self.zoom_counter -= 1
 
-    def check_answer_correct(self):
+    def distance_keisan(self):
         ax = self.Data.getAnsX()
         ay = self.Data.getAnsY()
         px = self.Data.getPlayerX()
@@ -809,6 +811,7 @@ class MapScene: #マップクラス=============================================
         self.Data.setDistance(distance)
         print("distance is")
         print(distance)
+            
 
     def is_map_correct(self):
         if(not self.map == self.Data.map):
@@ -887,7 +890,7 @@ class MapScene: #マップクラス=============================================
 
             self.Data.setPlayerX(player_x)
             self.Data.setPlayerY(player_y)
-            self.check_answer_correct()
+            self.distance_keisan()
             self.Data.setNeedReset(True)
             
 class AnswerScene:
@@ -1016,7 +1019,7 @@ class AnswerScene:
         pygame.draw.line(
             self.screen,(255,255,255),
             (int(ans_screen_x),int(ans_screen_y)),(int(player_screen_x),int(player_screen_y)),
-            10
+            5
         )
 
         pygame.draw.circle(
@@ -1029,7 +1032,40 @@ class AnswerScene:
             (int(player_screen_x), int(player_screen_y)), 8
         )
 
+    def draw_marubatu(self):
+        cx = SCREEN_SIZE_CENTER_X
+        cy = SCREEN_SIZE_CENTER_Y
+        offset_y = 150
+        r = 100
 
+        if(self.is_answer_correct()):
+            r_out = 105
+
+            #pygame.draw.circle(self.screen,(255,255,255),(cx,cy - offset_y), r_out, 15)
+            pygame.draw.circle(self.screen,(255,0,0),(cx,cy - offset_y), r, 20)
+        else:
+            pygame.draw.line(self.screen,(0,0,255),(cx - r,cy - r),(cx + r,cy+r),20)
+            pygame.draw.line(self.screen,(0,0,255),(cx - r,cy + r),(cx + r,cy-r),20)
+
+            
+    def draw_distance(self):
+        distance = self.Data.getDistance()
+        t_d = f"distance:{math.floor(distance)}"
+        td = self.font.render(t_d,True,(255,255,255))
+        rect_td = td.get_rect()
+        w = rect_td.width
+        t1 = self.font.render("rightClick : next",True,(255,255,255))
+        rect_t1 = t1.get_rect()
+        w1 = rect_t1.width
+        self.screen.blit(t1,[SCREEN_SIZE_CENTER_X-(w1/2),SCREEN_SIZE_CENTER_Y - 300])
+        self.screen.blit(td,[SCREEN_SIZE_CENTER_X- (w/2),SCREEN_SIZE_CENTER_Y-400])
+
+    def is_answer_correct(self):
+        distance = self.Data.getDistance()
+        if(distance <= DISTANCE_MAX):
+            return True
+        if(distance > DISTANCE_MAX):
+            return False
 
     def update(self):
         self.map = self.Data.map
@@ -1041,13 +1077,19 @@ class AnswerScene:
         if(not self.mapimg_scaled == None):
             self.screen.blit(self.mapimg_scaled,(0,0))
             self.draw_points()
+            self.draw_marubatu()
+            self.draw_distance()
 
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
-            self.finished = True
-            self.next_scene = "viewer"
-            self.mapimg_scaled = None
-            self.mapimg = None
+            if self.is_answer_correct():
+                self.finished = True
+                self.next_scene = "viewer"
+                self.mapimg_scaled = None
+                self.mapimg = None
+            else:
+                self.finished = True
+                self.next_scene = "menu"
         
 
 class ResultScene:
