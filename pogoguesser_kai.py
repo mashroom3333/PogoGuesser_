@@ -303,7 +303,7 @@ class MenuScene:
         self.screen.fill((0,0,0))
         text = self.font.render("Press any key to exit", True,(255,255,255))
         rect = text.get_rect(center = self.screen.get_rect().center)
-        pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(400,300),50)
+        pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(1600,900),50)
         self.screen.blit(text,rect)
         self.drawbutton()
         self.drawbar()
@@ -581,11 +581,11 @@ class ViwerScene: #推測画面クラス========================================
     def set_new_ques(self,x,y):
         print("new question")
         if(self.Data.map == 1):
-            g_bairitu =  1340/250 #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
+            g_bairitu =  1340/125 #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
         if(self.Data.map == 2):
             g_bairitu = 1860/300
         if(self.Data.map == 3):
-            g_bairitu = 1300/320 #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
+            g_bairitu = 1300/160 #とある地点に対してゲームと画像のピクセルを数えて求めた比率。
             
         print(self.Data.map)
         print(g_bairitu)
@@ -871,6 +871,8 @@ class MapScene: #マップクラス=============================================
         dy = max(abs(ay - py),1)
 
         distance = math.hypot(dx,dy)
+        if((self.Data.map == 1) or (self.Data.map == 3)):
+            distance *= 2
         self.Data.setDistance(distance)
         print("distance is")
         print(distance)
@@ -987,8 +989,8 @@ class AnswerScene:
         self.view_width = None
         self.view_height = None
         self.margin = 1.2
-        self.min_view_width = 800
-        self.min_view_height = 400
+        self.min_view_width = 300
+        self.min_view_height = 190
         self.pogo_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["pogo"])
         self.pogo_img = pygame.transform.smoothscale(self.pogo_img,(60,60))
         self.flag_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["flag"])
