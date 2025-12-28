@@ -15,32 +15,42 @@ SCREEN_SIZE_Y = SCREEN_SIZE[1]
 SCREEN_SIZE_CENTER_X = SCREEN_SIZE_X // 2
 SCREEN_SIZE_CENTER_Y = SCREEN_SIZE_Y // 2
 
+def get_resource_path(relative_path):
+    """
+    exe（PyInstaller）でも通常実行でも正しいパスを返す
+    """
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 MAP_FOR_GUESS_IMG_PATH = {
-    1: "assets/images/map1.png",
-    2: "assets/images/map2.png",
-    3: "assets/images/map3.png",
+    1: get_resource_path("assets/images/map1.png"),
+    2: get_resource_path("assets/images/map2.png"),
+    3: get_resource_path("assets/images/map3.png"),
 }
 
 MAP_IMG_PATH = {
-    1: "assets/images/map1.jpeg",
-    2: "assets/images/map2.jpeg",
-    3: "assets/images/map3.jpeg",
+    1: get_resource_path("assets/images/map1.jpeg"),
+    2: get_resource_path("assets/images/map2.jpeg"),
+    3: get_resource_path("assets/images/map3.jpeg"),
 }
 
 CHOSEABLE_AREA_IMG_PATH = {
-    1: "assets/images/map1_choseable_area.png",
-    2: "assets/images/map2_choseable_area.png",
-    3: "assets/images/map3_choseable_area.png",
+    1: get_resource_path("assets/images/map1_choseable_area.png"),
+    2: get_resource_path("assets/images/map2_choseable_area.png"),
+    3: get_resource_path("assets/images/map3_choseable_area.png"),
 }
 
 ANOTHER_ASSETS_IMG_PATH = {
-    "pogo": "assets/images/pogo.png",
-    "flag": "assets/images/flag.png",
+    "pogo": get_resource_path("assets/images/pogo.png"),
+    "flag": get_resource_path("assets/images/flag.png"),
 }
 
-
-BACKGROUND_IMG_PATH = ("assets/images/background.jpg")
-FONT_TIMER_PATH = ("assets/fonts/digitalism.ttf")
+BACKGROUND_IMG_PATH = get_resource_path("assets/images/background.jpg")
+FONT_TIMER_PATH = get_resource_path("assets/fonts/digitalism.ttf")
 DISTANCE_MAX = 100
 
 class Hitmark:
@@ -646,7 +656,6 @@ class ViwerScene: #推測画面クラス========================================
             return None
 
 
-    #---------描画系---------------------------------------------------------
     def draw_marks(self):
         if self.hit is not None:
             new_mark = Hitmark(
@@ -716,6 +725,20 @@ class ViwerScene: #推測画面クラス========================================
         text_mondai = self.font_mini.render(mondai_str,True,(255,255,255))
         self.screen.blit(text_mondai,(30, tm_height + 30))
 
+    def draw_crosshair(self):
+        length = 30
+        x1 = SCREEN_SIZE_CENTER_X - int(length / 2)
+        x2 = SCREEN_SIZE_CENTER_X + int(length / 2)
+        y = SCREEN_SIZE_CENTER_Y
+
+        pygame.draw.line(self.screen,(0,255,0),(x1,y),(x2,y),3)
+
+        x = SCREEN_SIZE_CENTER_X
+        y1 = SCREEN_SIZE_CENTER_Y - int(length / 2)
+        y2 = SCREEN_SIZE_CENTER_Y + int(length / 2)
+        
+        pygame.draw.line(self.screen,(0,255,0),(x,y1),(x,y2),3)
+
     def update(self):
         self.pointing()
         self.is_map_correct()
@@ -737,13 +760,13 @@ class ViwerScene: #推測画面クラス========================================
     def draw(self):
         self.screen.fill((0,0,0))
         self.screen.blit(self.backimg,(0,0))
-        self.screen.blit(self.mapimg_scaled,(0,0))
         self.draw_marks()
         self.draw_perticles()
         self.draw_laser()
         self.draw_timer()
         self.draw_details()
         self.draw_current_map_qestion()
+        self.draw_crosshair()
 
     def handle_events(self,event):
         if(event.type == KEYDOWN and event.key == K_m):
