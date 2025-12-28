@@ -147,7 +147,7 @@ class Data:
         self.menuing = True
         self.distance = 0
         self.current_question = 1
-        self.max_question = 10
+        self.max_question = 3
         self.map1_chosearea_points = None
         self.map2_chosearea_points = None
         self.map3_chosearea_points = None
@@ -1110,15 +1110,6 @@ class AnswerScene:
 
         self.screen.blit(self.flag_img,(flag_x,flag_y))
         self.screen.blit(self.pogo_img,(pogo_x,pogo_y))
-        #pygame.draw.circle(
-        #    self.screen, (255, 0, 0),
-        #    (int(ans_screen_x), int(ans_screen_y)), 8
-        #)
-
-        #pygame.draw.circle(
-        #    self.screen, (0, 255, 0),
-        #    (int(player_screen_x), int(player_screen_y)), 8
-        #)
 
     def draw_marubatu(self):
         cx = SCREEN_SIZE_CENTER_X
@@ -1205,6 +1196,16 @@ class ResultScene:
         y = SCREEN_SIZE_CENTER_Y - (timer_rect.height //2)
         self.screen.blit(time_text, (x,y)) # 画面左上に表示
 
+    def draw_mapname(self):
+        map = self.Data.map
+        map_str = f"MAP:{map}"
+        t = self.font.render(map_str,True,(255,255,255))
+        t_rect = t.get_rect()
+        x = SCREEN_SIZE_CENTER_X - (t_rect.width//2)
+        y = SCREEN_SIZE_CENTER_Y- (t_rect.height //2) - 70
+        self.screen.blit(t,(x,y))
+        pass
+
     def update(self):
         pass
 
@@ -1212,6 +1213,7 @@ class ResultScene:
         self.screen.fill((0,0,0))
         self.screen.blit(self.backimg,(0,0))
         self.draw_timer()
+        self.draw_mapname()
     
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
