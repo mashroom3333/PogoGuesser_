@@ -289,7 +289,7 @@ class MenuScene:
         self.modebutton_normal = MenuModeButton(self.screen,self.Data,"normal")
         self.modebutton_timeattack = MenuModeButton(self.screen,self.Data,"timeattack")
         self.modebutton_perfect = MenuModeButton(self.screen,self.Data,"perfect")
-        self.modebutton_long = MenuModeButton(self.screen,self.Data,"long")
+        self.modebutton_long = MenuModeButton(self.screen,self.Data,"marathon")
 
 
     def buttonupdate(self):
@@ -489,7 +489,7 @@ class MenuModeButton:
             self.x_kizyun = kizyun + self.width * 2 + self.offset * 1
         if(self.mode == "perfect"):
             self.x_kizyun = kizyun + self.width * 3 + self.offset * 2
-        if(self.mode == "long"):
+        if(self.mode == "marathon"):
             self.x_kizyun = kizyun + self.width * 4 + self.offset * 3
     
     def check_on_mouse(self):
