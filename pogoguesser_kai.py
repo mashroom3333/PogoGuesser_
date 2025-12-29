@@ -51,6 +51,7 @@ LOGO_IMG_PATH = get_resource_path("assets/images/logo.png")
 URL_BUTTON_IMG_PATH = get_resource_path("assets/images/urlbutton.png")
 FONT_TIMER_PATH = get_resource_path("assets/fonts/digitalism.ttf")
 DISTANCE_MAX = 100
+DISTANCE_MAX_FOR_PERFECT = 30
 
 
 URL = "https://store.steampowered.com/app/688130/Pogostuck_Rage_With_Your_Friends/"
@@ -156,8 +157,11 @@ class Data:
         self.map2_chosearea_points = None
         self.map3_chosearea_points = None
         self.image_chache = {}
-        self.timer_ms = 0
-        self.timer_active = False
+        self.maintimer_ms = 0
+        self.maintimer_active = False
+        self.subtimer_ms = 0
+        self.subtimer_active = False
+        self.timeover = False
 
     def setMode(self,mode):
         self.mode = mode
@@ -165,18 +169,32 @@ class Data:
     def getMode(self):
         return self.mode
         
-    def reset_timer(self):
-        self.timer_ms = 0
-        self.timer_active = True
+    def reset_maintimer(self):
+        self.maintimer_ms = 0
+        self.maintimer_active = True
 
-    def stop_timer(self):
-        self.timer_active = False
+    def stop_maintimer(self):
+        self.maintimer_active = False
 
     def get_time_str(self):
-        minutes = self.timer_ms // 60000
-        seconds = (self.timer_ms % 60000) // 1000
-        ms = (self.timer_ms % 1000) // 10
+        minutes = self.maintimer_ms // 60000
+        seconds = (self.maintimer_ms % 60000) // 1000
+        ms = (self.maintimer_ms % 1000) // 10
         return f"{minutes:02}m {seconds:02}s {ms:02}ms"
+
+    def reset_subtimer(self):
+        self.subtimer_ms = 6000
+        self.subtimer_active = True
+
+    def stop_subtimer(self):
+        self.subtimer_active = False
+
+    def get_subtime_str(self):
+        seconds = (self.subtimer_ms % 60000) // 1000
+        ms = (self.subtimer_ms % 1000) // 10
+        return f"{seconds:02}s {ms:02}ms"
+
+
 
     def addCorrectAnswer(self):
         self.correct_answer += 1
@@ -264,6 +282,9 @@ class Data:
 
     def resetCurrentQues(self):
         self.current_question = 1
+
+    def resetCorrectAns(self):
+        self.correct_answer = 0
     
 
 class MenuScene:
@@ -342,11 +363,20 @@ class MenuScene:
             print("map3buttonwas pushed")
             return self.map3button.map
 
-    def modetext(self): #デバッグ用、あとで消す
+    def modetext(self): 
         mode = self.Data.getMode()
-        t = f"Current mode is {mode}"
+        if(mode == "normal"):#あほくせーｗ
+            mode = "Normal"  #頭文字大文字嫌いなんだよな
+        if(mode == "timeattack"):
+            mode = "TimeAttack"
+        if(mode == "perfect"):
+            mode = "Perfect"
+        if(mode == "marathon"):
+            mode = "Marathon"
+        t = f"Mode: {mode}"
         text = self.font.render(t,True,(255,255,255))
-        self.screen.blit(text,(0,0))
+        tx = SCREEN_SIZE_CENTER_X - (text.get_rect().width / 2)
+        self.screen.blit(text,(tx,800))
         
     def update(self):
         self.buttonupdate()
@@ -362,7 +392,7 @@ class MenuScene:
         text2 = self.font.render("Laser Color", True,(255,255,255))
         pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(1600,900),50)
         self.screen.blit(text,(tex,tey))
-        self.screen.blit(text2,(SCREEN_SIZE_CENTER_X - (text2.get_rect().width / 2), 780))
+        self.screen.blit(text2,(SCREEN_SIZE_CENTER_X - (text2.get_rect().width / 2), 1000))
 
         self.draw
         self.drawbutton()
@@ -394,7 +424,11 @@ class MenuScene:
             self.map2button.button_pushed = False
             self.map3button.button_pushed = False
             self.Data.resetCurrentQues()
-            self.Data.reset_timer()
+            self.Data.reset_maintimer()
+            self.Data.resetCorrectAns()
+            if(self.Data.getMode() == "marathon"):
+                self.Data.reset_subtimer()
+                self.Data.timeover = False
 
             self.finished = True
             self.next_scene = "viewer"
@@ -455,7 +489,7 @@ class MenuMapButton:
 
     def handle_events(self,event):
         if((event.type == MOUSEBUTTONDOWN) and (event.button == 1) and (self.check_on_mouse())):
-            self.Data.reset_timer()
+            self.Data.reset_maintimer()
             self.button_pushed = True
 
 class MenuModeButton:
@@ -563,7 +597,7 @@ class MenuColorBar:
             self.map = 1
         
         self.x1 = SCREEN_SIZE_CENTER_X - int(self.width / 2) + self.bar_value#左上の基準点
-        self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) + 200  + self.map * 40
+        self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) + 250  + self.map * 40
         self.x2 = self.x1 + self.width
         self.y2 = self.y1 + self.height - self.offset
         
@@ -584,7 +618,7 @@ class MenuColorBar:
 
     def update_values(self):
         self.x1 = self.bar_x_value - int(self.width / 2) #左上の基準点
-        self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) + 200  + self.map * 40
+        self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) + 250  + self.map * 40
         self.x2 = self.x1 + self.width
         self.y2 = self.y1 + self.height - self.offset
 
@@ -688,7 +722,7 @@ class UrlButton:
 
     def handle_events(self,event):
         if((event.type == MOUSEBUTTONDOWN) and event.button == 1 and self.check_on_mouse()):
-            self.Data.reset_timer()
+            self.Data.reset_maintimer()
             self.button_pushed = True
             webbrowser.open(URL)
 
@@ -697,7 +731,7 @@ class ViwerScene: #推測画面クラス========================================
         self.Data = data
         self.font = pygame.font.Font(None,100)
         self.font_mini = pygame.font.Font(None,60)
-        self.font_timer = pygame.font.Font(None,100)
+        self.font_maintimer = pygame.font.Font(None,100)
         self.screen = screen
         self.finished = False
         self.next_scene = None
@@ -720,6 +754,7 @@ class ViwerScene: #推測画面クラス========================================
         self.question_finished = False
         self.backimg = pygame.image.load(BACKGROUND_IMG_PATH).convert_alpha()
         self.timer_width_max = 0
+        self.subtimer_width_max = 0
         
         self.choseable_img = pygame.image.load(CHOSEABLE_AREA_IMG_PATH[self.Data.map]).convert_alpha()
         self.choseable_mask = pygame.mask.from_surface(self.choseable_img)
@@ -907,13 +942,24 @@ class ViwerScene: #推測画面クラス========================================
         pygame.draw.line(self.screen,(255,250,250),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
 
                 
-    def draw_timer(self):
-        time_text = self.font_timer.render(self.Data.get_time_str(), True, (0, 255, 0))
-        
-        timer_rect = time_text.get_rect()
-        if(self.timer_width_max < timer_rect.width):
-            self.timer_width_max = timer_rect.width
-        self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
+    def draw_maintimer(self):
+        if(not (self.Data.getMode() == "marathon")):
+            time_text = self.font_maintimer.render(self.Data.get_time_str(), True, (0, 255, 0))
+            
+            timer_rect = time_text.get_rect()
+            if(self.timer_width_max < timer_rect.width):
+                self.timer_width_max = timer_rect.width
+            self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
+
+    def draw_subtimer(self):
+        if(self.Data.getMode() == "marathon"):
+            timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
+
+            timer_rect = timer_text.get_rect()
+            if(self.subtimer_width_max < timer_rect.width):
+                self.subtimer_width_max = timer_rect.width
+
+            self.screen.blit(timer_text,(SCREEN_SIZE_CENTER_X - self.subtimer_width_max / 2,20))
 
     def draw_details(self):
         text_1 = self.font_mini.render("left click : change laser origin",True,(255,255,255))
@@ -939,13 +985,14 @@ class ViwerScene: #推測画面クラス========================================
         self.screen.blit(text_mode,(30,tm_height + 30))
         
 
-        ima = self.Data.current_question
-        max = self.Data.max_question
-        nokori_game_counter =ima
-        mondai_str = f"{nokori_game_counter}/{max}"
+        if (not self.Data.getMode() == "marathon"):
+            ima = self.Data.current_question
+            max = self.Data.max_question
+            nokori_game_counter =ima
+            mondai_str = f"{nokori_game_counter}/{max}"
 
-        text_mondai = self.font_mini.render(mondai_str,True,(255,255,255))
-        self.screen.blit(text_mondai,(30, tm_height + m_height + 30))
+            text_mondai = self.font_mini.render(mondai_str,True,(255,255,255))
+            self.screen.blit(text_mondai,(30, tm_height + m_height + 30))
 
     def draw_crosshair(self):
         length = 30
@@ -961,10 +1008,18 @@ class ViwerScene: #推測画面クラス========================================
         
         pygame.draw.line(self.screen,(0,255,0),(x,y1),(x,y2),3)
 
-    def draw_howmany(self):
-        t = f"{self.Data.getCorrectAnswer()}"
-        str = self.font.render(t,True,(0,200,255))
-        self.screen.blit(str,(0,200))
+    def draw_streak(self):
+        if(self.Data.getMode() == "marathon"):
+            y = 135
+            streak_t = self.font.render("streaks:",True,(255,255,255))
+            streak_width = streak_t.get_rect().width
+            streak_height = streak_t.get_rect().height
+            self.screen.blit(streak_t,(30,y))
+            value = self.Data.getCorrectAnswer()
+
+            value_t = self.font.render(f"{value}",True,(0,255,0))
+            self.screen.blit(value_t,(streak_width + 40, y))
+
 
     def update(self):
         self.pointing()
@@ -974,11 +1029,12 @@ class ViwerScene: #推測画面クラス========================================
             if(self.Data.isQuestionContinue()):
                 None
             else:
-                self.question_finished == True
-                self.finished = True
-                self.Data.resetCurrentQues()
-                self.next_scene = "result"
-                self.Data.stop_timer()
+                if(not (self.Data.getMode() == "marathon")):
+                    self.question_finished == True
+                    self.finished = True
+                    self.Data.resetCurrentQues()
+                    self.next_scene = "result"
+                    self.Data.stop_maintimer()
                 
             self.Data.setNeedReset(False)
 
@@ -990,11 +1046,12 @@ class ViwerScene: #推測画面クラス========================================
         self.draw_marks()
         self.draw_perticles()
         self.draw_laser()
-        self.draw_timer()
+        self.draw_maintimer()
+        self.draw_streak()
+        self.draw_subtimer()
         self.draw_details()
         self.draw_current_map_qestion()
         self.draw_crosshair()
-        self.draw_howmany() #デバッグ用後で消す
 
     def handle_events(self,event):
         if(event.type == KEYDOWN and event.key == K_m):
@@ -1013,7 +1070,7 @@ class MapScene: #マップクラス=============================================
         self.sw,self.sh = SCREEN_SIZE
         self.font = pygame.font.Font(None,60)
         self.font_mini = pygame.font.Font(None,40)
-        self.font_timer = pygame.font.Font(None,100)
+        self.font_maintimer = pygame.font.Font(None,100)
         self.finished = False
         self.next_scene = None
         self.map = self.Data.map
@@ -1026,7 +1083,8 @@ class MapScene: #マップクラス=============================================
         self.img_x = 0
         self.img_y = 0
         self.distance = None
-        self.timer_width_max = 0
+        self.maintimer_width_max = 0
+        self.subtimer_width_max = 0
 
         self.dragging = False
         self.mouse_moving = False
@@ -1136,13 +1194,24 @@ class MapScene: #マップクラス=============================================
         self.screen.blit(t3,[0,SCREEN_SIZE[1]-120])
         self.screen.blit(t4,[0,SCREEN_SIZE[1]-60])
 
-    def draw_timer(self):
-        time_text = self.font_timer.render(self.Data.get_time_str(), True, (0, 255, 0))
-        
-        timer_rect = time_text.get_rect()
-        if(self.timer_width_max < timer_rect.width):
-            self.timer_width_max = timer_rect.width
-        self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
+    def draw_maintimer(self):
+        if(not (self.Data.getMode() == "marathon")):
+            time_text = self.font_maintimer.render(self.Data.get_time_str(), True, (0, 255, 0))
+            
+            timer_rect = time_text.get_rect()
+            if(self.maintimer_width_max < timer_rect.width):
+                self.maintimer_width_max = timer_rect.width
+            self.screen.blit(time_text, (SCREEN_SIZE[0] - self.maintimer_width_max, 20)) 
+
+    def draw_subtimer(self):
+        if(self.Data.getMode() == "marathon"):
+            timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
+
+            timer_rect = timer_text.get_rect()
+            if(self.subtimer_width_max < timer_rect.width):
+                self.subtimer_width_max = timer_rect.width
+
+            self.screen.blit(timer_text,(SCREEN_SIZE_CENTER_X - self.subtimer_width_max / 2,20))
 
     def update(self):
         self.scaling_value()
@@ -1153,7 +1222,8 @@ class MapScene: #マップクラス=============================================
         self.screen.fill((0,0,0))
         self.screen.blit(self.mapimg_scaled,(self.img_x,self.img_y))
         self.draw_setumei()
-        self.draw_timer()
+        self.draw_maintimer()
+        self.draw_subtimer()
 
     def handle_events(self,event):
         if(event.type == KEYDOWN):
@@ -1195,13 +1265,14 @@ class MapScene: #マップクラス=============================================
             self.Data.setPlayerY(player_y)
             self.distance_keisan()
             self.Data.setNeedReset(True)
+            self.Data.stop_subtimer()
             
 class AnswerScene:
     def __init__(self,screen,data):
         self.Data = data
         self.font = pygame.font.Font(None,160)
         self.font_mini = pygame.font.Font(None,60)
-        self.font_timer = pygame.font.Font(None,100)
+        self.font_maintimer = pygame.font.Font(None,100)
         self.map = self.Data.map
         self.mapimg = self.Data.get_image(MAP_IMG_PATH[self.map])
         self.mapimg_scaled = None
@@ -1225,7 +1296,7 @@ class AnswerScene:
         self.flag_img = pygame.transform.smoothscale(self.flag_img,(50,50))
         self.pogo_rect = self.pogo_img.get_rect()
         self.flag_rect = self.flag_img.get_rect()
-        self.timer_width_max = 0
+        self.maintimer_width_max = 0
     
 
     def scaling_image(self):
@@ -1364,13 +1435,20 @@ class AnswerScene:
         self.screen.blit(t1,[SCREEN_SIZE_CENTER_X-(w1/2),SCREEN_SIZE_CENTER_Y + 400])
         self.screen.blit(td,[SCREEN_SIZE_CENTER_X- (w/2),SCREEN_SIZE_CENTER_Y + 250])
 
-    def draw_timer(self):
-        time_text = self.font_timer.render(self.Data.get_time_str(), True, (0, 255, 0))
-        
-        timer_rect = time_text.get_rect()
-        if(self.timer_width_max < timer_rect.width):
-            self.timer_width_max = timer_rect.width
-        self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
+    def draw_maintimer(self):
+        if(not (self.Data.getMode() == "marathon")):
+            time_text = self.font_maintimer.render(self.Data.get_time_str(), True, (0, 255, 0))
+            
+            timer_rect = time_text.get_rect()
+            if(self.maintimer_width_max < timer_rect.width):
+                self.maintimer_width_max = timer_rect.width
+            self.screen.blit(time_text, (SCREEN_SIZE[0] - self.maintimer_width_max, 20)) 
+
+    def draw_subtimer(self):
+        if(self.Data.getMode() == "marathon"):
+            timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
+            timer_rect = timer_text.get_rect()
+            self.screen.blit(timer_text,(SCREEN_SIZE_CENTER_X - timer_rect.width / 2,20))
 
 
     def is_answer_correct(self):
@@ -1398,7 +1476,8 @@ class AnswerScene:
             self.draw_marubatu()
             self.draw_points()
             self.draw_distance()
-            self.draw_timer()
+            self.draw_maintimer()
+            self.draw_subtimer()
 
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
@@ -1410,9 +1489,14 @@ class AnswerScene:
                 self.mapimg_scaled = None
                 self.mapimg = None
                 self.Data.addCurrentQ()
+                self.Data.reset_subtimer()
             else:
-                self.finished = True
-                self.next_scene = "menu"
+                if (self.Data.getMode() == "marathon"):
+                    self.finished = True
+                    self.next_scene = "result"
+                else:
+                    self.finished = True
+                    self.next_scene = "menu"
         
 
 class ResultScene:
@@ -1420,18 +1504,20 @@ class ResultScene:
         self.Data = data
         self.font = pygame.font.Font(None,100)
         self.font_big = pygame.font.Font(None,150)
+        self.font_very_big = pygame.font.Font(None,250)
         self.map = self.Data.map
         self.backimg = pygame.image.load(BACKGROUND_IMG_PATH).convert_alpha()
         self.screen = screen
         self.finished = False
         self.next_scene = None
 
-    def draw_timer(self):
-        time_text = self.font.render(self.Data.get_time_str(), True, (0, 255, 0))
-        timer_rect = time_text.get_rect()
-        x = SCREEN_SIZE_CENTER_X - (timer_rect.width //2)
-        y = SCREEN_SIZE_CENTER_Y - (timer_rect.height //2)
-        self.screen.blit(time_text, (x,y)) # 画面左上に表示
+    def draw_maintimer(self):
+        if(not (self.Data.getMode() == "marathon")):
+            time_text = self.font.render(self.Data.get_time_str(), True, (0, 255, 0))
+            timer_rect = time_text.get_rect()
+            x = SCREEN_SIZE_CENTER_X - (timer_rect.width //2)
+            y = SCREEN_SIZE_CENTER_Y - (timer_rect.height //2)
+            self.screen.blit(time_text, (x,y)) # 画面左上に表示
 
     def draw_mapname(self):
         map = self.Data.map
@@ -1454,6 +1540,23 @@ class ResultScene:
             y = SCREEN_SIZE_CENTER_Y- (t_rect.height //2) + 100
             self.screen.blit(t,(x,y))
             
+    def draw_streak(self):
+        if(self.Data.getMode() == "marathon"):
+            streak_t = self.font.render("streaks:",True,(255,255,255))
+            streak_width = streak_t.get_rect().width
+            streak_height = streak_t.get_rect().height
+            st_x = SCREEN_SIZE_CENTER_X - (streak_width // 2)
+            st_y = SCREEN_SIZE_CENTER_Y - (streak_height // 2)
+            self.screen.blit(streak_t,(st_x,st_y))
+
+            value = self.Data.getCorrectAnswer()
+            value_t = self.font_very_big.render(f"{value}",True,(0,255,0))
+            value_width = value_t.get_rect().width
+            v_x = SCREEN_SIZE_CENTER_X - (value_width //2)
+            v_y = st_y + 80
+            self.screen.blit(value_t,(v_x,v_y))
+            
+
 
     def update(self):
         pass
@@ -1461,9 +1564,10 @@ class ResultScene:
     def draw(self):
         self.screen.fill((0,0,0))
         self.screen.blit(self.backimg,(0,0))
-        self.draw_timer()
+        self.draw_maintimer()
         self.draw_how_many()
         self.draw_mapname()
+        self.draw_streak()
     
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
@@ -1512,8 +1616,16 @@ class Game:#=================================ゲームクラス=================
         self.scene.update()
         dt = self.clock.get_time()
 
-        if self.Data.timer_active:
-            self.Data.timer_ms += dt
+        if self.Data.maintimer_active:
+            self.Data.maintimer_ms += dt
+
+        if self.Data.subtimer_active:
+            self.Data.subtimer_ms -= dt
+
+        if self.Data.subtimer_ms < 0 and not self.Data.timeover:
+            self.Data.timeover = True
+            self.Data.stop_maintimer()
+            self.set_scene("result")
 
         if self.scene.next_scene:
             next_name = self.scene.next_scene
