@@ -4,6 +4,7 @@ import sys
 import os
 import random
 import numpy as np
+import webbrowser
 from pygame.locals import*
 from dataclasses import dataclass
 
@@ -373,8 +374,8 @@ class MenuMapButton:
 
     def change_color(self,str):
         if(str == "light"):
-            self.r = 230
-            self.g = 230
+            self.r = 255
+            self.g = 200
             self.b = 0
         if(str == "dark"):
             self.r = 50
@@ -1032,9 +1033,9 @@ class AnswerScene:
         self.min_view_width = 300
         self.min_view_height = int(300 * (9/16))
         self.pogo_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["pogo"])
-        self.pogo_img = pygame.transform.smoothscale(self.pogo_img,(60,60))
+        self.pogo_img = pygame.transform.smoothscale(self.pogo_img,(50,50))
         self.flag_img = pygame.image.load(ANOTHER_ASSETS_IMG_PATH["flag"])
-        self.flag_img = pygame.transform.smoothscale(self.flag_img,(60,60))
+        self.flag_img = pygame.transform.smoothscale(self.flag_img,(50,50))
         self.pogo_rect = self.pogo_img.get_rect()
         self.flag_rect = self.flag_img.get_rect()
         self.timer_width_max = 0
