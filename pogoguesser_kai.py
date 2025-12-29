@@ -150,7 +150,8 @@ class Data:
         self.menuing = True
         self.distance = 0
         self.current_question = 1
-        self.max_question = 10
+        self.correct_answer = 0
+        self.max_question = 3
         self.map1_chosearea_points = None
         self.map2_chosearea_points = None
         self.map3_chosearea_points = None
@@ -177,7 +178,11 @@ class Data:
         ms = (self.timer_ms % 1000) // 10
         return f"{minutes:02}m {seconds:02}s {ms:02}ms"
 
-    
+    def addCorrectAnswer(self):
+        self.correct_answer += 1
+
+    def getCorrectAnswer(self):
+        return self.correct_answer
 
     def get_image(self,path):
         if path not in self.image_chache:
@@ -200,6 +205,9 @@ class Data:
             self.map2_chosearea_points = points
         if(map == 3):
             self.map3_chosearea_points = points
+            
+    def getMaxQ(self):
+        return self.max_question
             
     def setColorR(self,x):
         self.color_r = x
@@ -923,6 +931,13 @@ class ViwerScene: #推測画面クラス========================================
         tm_height = t_rect.height
         self.screen.blit(text_map,(30,30))
 
+        mode = self.Data.getMode()
+        mode_str = f"Mode:{mode}"
+        text_mode = self.font_mini.render(mode_str,True,(255,255,255))
+        m_height = text_mode.get_rect().height
+
+        self.screen.blit(text_mode,(30,tm_height + 30))
+        
 
         ima = self.Data.current_question
         max = self.Data.max_question
@@ -930,7 +945,7 @@ class ViwerScene: #推測画面クラス========================================
         mondai_str = f"{nokori_game_counter}/{max}"
 
         text_mondai = self.font_mini.render(mondai_str,True,(255,255,255))
-        self.screen.blit(text_mondai,(30, tm_height + 30))
+        self.screen.blit(text_mondai,(30, tm_height + m_height + 30))
 
     def draw_crosshair(self):
         length = 30
@@ -945,6 +960,11 @@ class ViwerScene: #推測画面クラス========================================
         y2 = SCREEN_SIZE_CENTER_Y + int(length / 2)
         
         pygame.draw.line(self.screen,(0,255,0),(x,y1),(x,y2),3)
+
+    def draw_howmany(self):
+        t = f"{self.Data.getCorrectAnswer()}"
+        str = self.font.render(t,True,(0,200,255))
+        self.screen.blit(str,(0,200))
 
     def update(self):
         self.pointing()
@@ -974,6 +994,7 @@ class ViwerScene: #推測画面クラス========================================
         self.draw_details()
         self.draw_current_map_qestion()
         self.draw_crosshair()
+        self.draw_howmany() #デバッグ用後で消す
 
     def handle_events(self,event):
         if(event.type == KEYDOWN and event.key == K_m):
@@ -1375,7 +1396,9 @@ class AnswerScene:
 
     def handle_events(self,event):
         if(event.type == MOUSEBUTTONDOWN and event.button == 3):
-            if self.is_answer_correct():
+            if self.is_answer_correct() or (self.Data.getMode() == "normal"):
+                if self.is_answer_correct():
+                    self.Data.addCorrectAnswer()
                 self.finished = True
                 self.next_scene = "viewer"
                 self.mapimg_scaled = None
@@ -1390,6 +1413,7 @@ class ResultScene:
     def __init__(self,screen,data):
         self.Data = data
         self.font = pygame.font.Font(None,100)
+        self.font_big = pygame.font.Font(None,150)
         self.map = self.Data.map
         self.backimg = pygame.image.load(BACKGROUND_IMG_PATH).convert_alpha()
         self.screen = screen
@@ -1411,7 +1435,19 @@ class ResultScene:
         x = SCREEN_SIZE_CENTER_X - (t_rect.width//2)
         y = SCREEN_SIZE_CENTER_Y- (t_rect.height //2) - 70
         self.screen.blit(t,(x,y))
-        pass
+
+    def draw_how_many(self):
+        if(self.Data.getMode() == "normal"):
+            correct = self.Data.getCorrectAnswer()
+            max = self.Data.getMaxQ()
+            
+            str = f"{correct} / {max}"
+            t = self.font_big.render(str,True,(255,255,255))
+            t_rect = t.get_rect()
+            x = SCREEN_SIZE_CENTER_X - (t_rect.width//2)
+            y = SCREEN_SIZE_CENTER_Y- (t_rect.height //2) + 100
+            self.screen.blit(t,(x,y))
+            
 
     def update(self):
         pass
@@ -1420,6 +1456,7 @@ class ResultScene:
         self.screen.fill((0,0,0))
         self.screen.blit(self.backimg,(0,0))
         self.draw_timer()
+        self.draw_how_many()
         self.draw_mapname()
     
     def handle_events(self,event):
