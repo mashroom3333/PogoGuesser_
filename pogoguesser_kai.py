@@ -50,6 +50,7 @@ ANOTHER_ASSETS_IMG_PATH = {
 }
 
 BACKGROUND_IMG_PATH = get_resource_path("assets/images/background.jpg")
+LOGO_IMG_PATH = get_resource_path("assets/images/logo.png")
 FONT_TIMER_PATH = get_resource_path("assets/fonts/digitalism.ttf")
 DISTANCE_MAX = 100
 
@@ -255,6 +256,11 @@ class MenuScene:
         self.map = None
         self.finished = False
         self.next_scene = None
+        self.logo_img = pygame.image.load(LOGO_IMG_PATH)
+        bairitu = 0.7
+        width = self.logo_img.get_rect().width
+        height = self.logo_img.get_rect().height
+        self.logo_img = pygame.transform.smoothscale(self.logo_img,(width * bairitu,height*bairitu))
         self.map1button = MenuMapButton(self.screen,self.Data,1)
         self.map2button = MenuMapButton(self.screen,self.Data,2)
         self.map3button = MenuMapButton(self.screen,self.Data,3)
@@ -283,6 +289,12 @@ class MenuScene:
         self.colorvar_g.draw()
         self.colorvar_b.draw()
 
+    def drawlogo(self):
+        width = self.logo_img.get_rect().width
+        x = SCREEN_SIZE_CENTER_X - int(width / 2)
+        y = 200
+        self.screen.blit(self.logo_img,(x,y))
+
     def any_button_pushed(self):
         if (self.map1button.button_pushed == True):
             print("map1buttonwas pushed")
@@ -300,13 +312,15 @@ class MenuScene:
         pass
 
     def draw(self):
-        self.screen.fill((0,0,0))
+        self.screen.fill((30,30,50))
         text = self.font.render("Press any key to exit", True,(255,255,255))
         rect = text.get_rect(center = self.screen.get_rect().center)
         pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(1600,900),50)
         self.screen.blit(text,rect)
+        self.draw
         self.drawbutton()
         self.drawbar()
+        self.drawlogo()
 
     def handle_events(self,event):
         self.map1button.handle_events(event)
@@ -343,7 +357,9 @@ class MenuMapButton:
         self.y1 = SCREEN_SIZE_CENTER_Y + (self.height) * self.map
         self.x2 = self.x1 + self.width
         self.y2 = self.y1 + self.height - self.offset
-        self.color = 150
+        self.r = 150
+        self.g = 150
+        self.b = 150
         self.button_pushed = False
         
     def check_on_mouse(self):
@@ -357,9 +373,13 @@ class MenuMapButton:
 
     def change_color(self,str):
         if(str == "light"):
-            self.color = 230
+            self.r = 230
+            self.g = 230
+            self.b = 0
         if(str == "dark"):
-            self.color = 150
+            self.r = 50
+            self.g = 50
+            self.b = 50
     
     def drawMapStr(self):
         f = f"MAP{self.map}"
@@ -374,7 +394,7 @@ class MenuMapButton:
         self.check_on_mouse()
         pass
     def draw(self):
-        pygame.draw.rect(self.screen,(self.color,self.color,self.color),(self.x1, self.y1,self.width,self.height -self.offset))
+        pygame.draw.rect(self.screen,(self.r,self.g,self.b),(self.x1, self.y1,self.width,self.height -self.offset))
         self.drawMapStr()
 
     def handle_events(self,event):
@@ -402,6 +422,7 @@ class MenuColorBar:
         self.dragging = False
         self.max_zahyou = 1400
         self.min_zahyou = 500
+        self.perticles = []
 
 
         if self.color_name == "red":
@@ -455,9 +476,26 @@ class MenuColorBar:
         self.update_values()
         self.updateColors()
         pass
+
+    def make_perticles(self):
+        new_perticle = Perticle(
+            self.screen,
+            1600,900,self.Data)
+        self.perticles.append(new_perticle)
+    
+    def draw_perticles(self):
+        for p in self.perticles[:]:
+            p.update_counter()
+            p.draw(self.screen)
+
+            if p.is_dead():
+                self.perticles.remove(p)
+
+
     def draw(self):
         pygame.draw.line(self.screen,(128,128,128),(self.min_zahyou,int(((self.y1+self.y2)/2))),(self.max_zahyou, int((self.y1 + self.y2)/2)),5)
         pygame.draw.rect(self.screen,(self.color,self.color,self.color),(self.x1, self.y1,self.width,self.height - self.offset))
+        self.draw_perticles()
 
     def handle_events(self,event):
         if((event.type == MOUSEBUTTONDOWN) and (event.button == 1) and (self.check_on_mouse())):
@@ -473,6 +511,8 @@ class MenuColorBar:
             mx,my = event.pos
             if((self.min_zahyou) < mx and (mx < self.max_zahyou)):
                 self.bar_x_value = mx
+
+            self.make_perticles()
             
         if event.type == MOUSEBUTTONUP and event.button == 1:
             self.dragging = False
