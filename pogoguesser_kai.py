@@ -1375,10 +1375,16 @@ class AnswerScene:
 
     def is_answer_correct(self):
         distance = self.Data.getDistance()
-        if(distance <= DISTANCE_MAX):
-            return True
-        if(distance > DISTANCE_MAX):
-            return False
+        if(self.Data.getMode() == "perfect"):
+            if(distance <= DISTANCE_MAX_FOR_PERFECT):
+                return True
+            if(distance > DISTANCE_MAX_FOR_PERFECT):
+                return False
+        else:
+            if(distance <= DISTANCE_MAX):
+                return True
+            if(distance > DISTANCE_MAX):
+                return False
 
     def update(self):
         self.map = self.Data.map
