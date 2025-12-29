@@ -6,7 +6,6 @@ import random
 import numpy as np
 import webbrowser
 from pygame.locals import*
-from dataclasses import dataclass
 
 
 
@@ -17,9 +16,6 @@ SCREEN_SIZE_CENTER_X = SCREEN_SIZE_X // 2
 SCREEN_SIZE_CENTER_Y = SCREEN_SIZE_Y // 2
 
 def get_resource_path(relative_path):
-    """
-    exe（PyInstaller）でも通常実行でも正しいパスを返す
-    """
     try:
         base_path = sys._MEIPASS
     except AttributeError:
@@ -321,8 +317,11 @@ class MenuScene:
         self.screen.fill((30,30,50))
         text = self.font.render("Press Esc key to exit", True,(255,255,255))
         rect = text.get_rect(center = self.screen.get_rect().center)
+        text2 = self.font.render("Laser Color", True,(255,255,255))
         pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(1600,900),50)
         self.screen.blit(text,rect)
+        self.screen.blit(text2,(SCREEN_SIZE_CENTER_X - (text2.get_rect().width / 2), 780))
+
         self.draw
         self.drawbutton()
         self.drawbar()
