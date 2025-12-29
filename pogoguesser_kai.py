@@ -52,8 +52,12 @@ ANOTHER_ASSETS_IMG_PATH = {
 
 BACKGROUND_IMG_PATH = get_resource_path("assets/images/background.jpg")
 LOGO_IMG_PATH = get_resource_path("assets/images/logo.png")
+URL_BUTTON_IMG_PATH = get_resource_path("assets/images/urlbutton.png")
 FONT_TIMER_PATH = get_resource_path("assets/fonts/digitalism.ttf")
 DISTANCE_MAX = 100
+
+
+URL = "https://store.steampowered.com/app/688130/Pogostuck_Rage_With_Your_Friends/"
 
 class Hitmark:
     def __init__(self,screen,x,y,data):
@@ -268,6 +272,7 @@ class MenuScene:
         self.colorvar_r = MenuColorBar(self.screen,self.Data,"red")
         self.colorvar_g = MenuColorBar(self.screen,self.Data,"green")
         self.colorvar_b = MenuColorBar(self.screen,self.Data,"blue")
+        self.urlbutton = UrlButton(self.screen,self.Data)
 
 
     def buttonupdate(self):
@@ -314,7 +319,7 @@ class MenuScene:
 
     def draw(self):
         self.screen.fill((30,30,50))
-        text = self.font.render("Press any key to exit", True,(255,255,255))
+        text = self.font.render("Press Esc key to exit", True,(255,255,255))
         rect = text.get_rect(center = self.screen.get_rect().center)
         pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(1600,900),50)
         self.screen.blit(text,rect)
@@ -322,6 +327,7 @@ class MenuScene:
         self.drawbutton()
         self.drawbar()
         self.drawlogo()
+        self.urlbutton.draw()
 
     def handle_events(self,event):
         self.map1button.handle_events(event)
@@ -331,6 +337,7 @@ class MenuScene:
         self.colorvar_r.handle_events(event)
         self.colorvar_g.handle_events(event)
         self.colorvar_b.handle_events(event)
+        self.urlbutton.handle_events(event)
 
         pushed_map = self.any_button_pushed()
         if pushed_map is not None:
@@ -518,6 +525,52 @@ class MenuColorBar:
         if event.type == MOUSEBUTTONUP and event.button == 1:
             self.dragging = False
 
+class UrlButton:
+    def __init__(self,screen,data):
+        self.Data = data
+        self.screen = screen
+        self.font = pygame.font.Font(None,50)
+        self.map = map
+        self.left_top_x = None
+        self.image = pygame.image.load(URL_BUTTON_IMG_PATH)
+        self.x1 = 50
+        self.y1 = 900
+        self.width = self.image.get_rect().width
+        self.height = self.image.get_rect().height
+        self.x2 = self.x1 + self.width
+        self.y2 = self.y1 + self.height
+        
+    def check_on_mouse(self):
+        mx,my = pygame.mouse.get_pos()
+        if(self.x1 < mx and mx < self.x2) and (self.y1 < my and my < self.y2):
+            self.change_color("light")
+            return True
+        else:
+            self.change_color("dark")
+            return False
+
+    def change_color(self,str):
+        if(str == "light"):
+            self.r = 255
+            self.g = 200
+            self.b = 0
+        if(str == "dark"):
+            self.r = 50
+            self.g = 50
+            self.b = 50
+    
+    def update(self):
+        self.check_on_mouse()
+        pass
+    def draw(self):
+        #pygame.draw.rect(self.screen,(255,255,255),(self.x1, self.y1,self.width,self.height))
+        self.screen.blit(self.image,(self.x1,self.y1))
+
+    def handle_events(self,event):
+        if((event.type == MOUSEBUTTONDOWN) and event.button == 1 and self.check_on_mouse()):
+            self.Data.reset_timer()
+            self.button_pushed = True
+            webbrowser.open(URL)
 
 class ViwerScene: #推測画面クラス=============================================
     def __init__(self,screen,data):
@@ -732,6 +785,7 @@ class ViwerScene: #推測画面クラス========================================
         cb = self.Data.getColorB()
         pygame.draw.line(self.screen,(cr,cg,cb),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),40)
         pygame.draw.line(self.screen,(255,250,250),(self.laser_origin_x,self.laser_origin_y),(self.laser_last_x,self.laser_last_y),20)
+
                 
     def draw_timer(self):
         time_text = self.font_timer.render(self.Data.get_time_str(), True, (0, 255, 0))
@@ -1202,8 +1256,8 @@ class AnswerScene:
     def draw(self):
         if(not self.mapimg_scaled == None):
             self.screen.blit(self.mapimg_scaled,(0,0))
-            self.draw_points()
             self.draw_marubatu()
+            self.draw_points()
             self.draw_distance()
             self.draw_timer()
 
