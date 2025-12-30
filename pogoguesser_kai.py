@@ -1713,11 +1713,17 @@ class ResultScene:
 
     def draw_streak(self):
         if(self.Data.getMode() == "endless"):
+            sec = self.Data.getSecondsMax()
+            t = self.font.render(f"Seconds:{sec}",True,(255,255,255))
+            x = SCREEN_SIZE_CENTER_X - (t.get_rect().width / 2)
+            y = SCREEN_SIZE_CENTER_Y -50
+            self.screen.blit(t,(x,y))
+
             streak_t = self.font.render("Streaks:",True,(255,255,255))
             streak_width = streak_t.get_rect().width
             streak_height = streak_t.get_rect().height
             st_x = SCREEN_SIZE_CENTER_X - (streak_width // 2)
-            st_y = SCREEN_SIZE_CENTER_Y - (streak_height // 2)
+            st_y = SCREEN_SIZE_CENTER_Y - (streak_height // 2) + 100
             self.screen.blit(streak_t,(st_x,st_y))
 
             value = self.Data.getCorrectAnswer()
