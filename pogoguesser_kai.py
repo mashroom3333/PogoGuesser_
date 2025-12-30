@@ -50,6 +50,7 @@ BACKGROUND_IMG_PATH = get_resource_path("assets/images/background.jpg")
 LOGO_IMG_PATH = get_resource_path("assets/images/logo.png")
 URL_BUTTON_IMG_PATH = get_resource_path("assets/images/urlbutton.png")
 FONT_TIMER_PATH = get_resource_path("assets/fonts/digitalism.ttf")
+FONT_KAKUKAKU_PATH = get_resource_path("assets/fonts/GN-KillGothic-U-KanaO.ttf")
 DISTANCE_MAX = 100
 DISTANCE_MAX_FOR_PERFECT = 20
 
@@ -162,6 +163,7 @@ class Data:
         self.subtimer_ms = 0
         self.subtimer_active = False
         self.timeover = False
+        self.seconds_max = 6000
 
     def setMode(self,mode):
         self.mode = mode
@@ -183,7 +185,7 @@ class Data:
         return f"{minutes:02}m {seconds:02}s {ms:02}ms"
 
     def reset_subtimer(self):
-        self.subtimer_ms = 6000
+        self.subtimer_ms = self.seconds_max
         self.subtimer_active = True
 
     def stop_subtimer(self):
@@ -194,6 +196,11 @@ class Data:
         ms = (self.subtimer_ms % 1000) // 10
         return f"{seconds:02}s {ms:02}ms"
 
+    def setSecondsMax(self,sec):
+        self.seconds_max = (sec+1) * 1000 #5秒なのに4.なんぼから始まるのが許せないので+1
+
+    def getSecondsMax(self):
+        return int(self.seconds_max / 1000) - 1
 
 
     def addCorrectAnswer(self):
@@ -312,6 +319,9 @@ class MenuScene:
         self.modebutton_timeattack = MenuModeButton(self.screen,self.Data,"timeattack")
         self.modebutton_perfect = MenuModeButton(self.screen,self.Data,"perfect")
         self.modebutton_long = MenuModeButton(self.screen,self.Data,"endless")
+        self.valuebutton_5 = MenuValueButton(self.screen,self.Data,5)
+        self.valuebutton_10 = MenuValueButton(self.screen,self.Data,10)
+        self.valuebutton_15 = MenuValueButton(self.screen,self.Data,15)
 
 
     def buttonupdate(self):
@@ -330,6 +340,11 @@ class MenuScene:
         self.modebutton_perfect.update()
         self.modebutton_long.update()
 
+    def valuebutton_update(self):
+        self.valuebutton_5.update()
+        self.valuebutton_10.update()
+        self.valuebutton_15.update()
+
     def drawbutton(self):
         self.map1button.draw()
         self.map2button.draw()
@@ -345,6 +360,11 @@ class MenuScene:
         self.modebutton_timeattack.draw()
         self.modebutton_perfect.draw()
         self.modebutton_long.draw()
+
+    def drawvaluebutton(self):
+        self.valuebutton_5.draw()
+        self.valuebutton_10.draw()
+        self.valuebutton_15.draw()
         
 
     def drawlogo(self):
@@ -352,6 +372,12 @@ class MenuScene:
         x = SCREEN_SIZE_CENTER_X - int(width / 2)
         y = 100
         self.screen.blit(self.logo_img,(x,y))
+
+    def drawseconds(self):
+        if(self.Data.getMode() == "endless"):
+            sec = self.Data.getSecondsMax()
+            t = self.font.render(f"Seconds: {sec}",True,(255,255,255))
+            self.screen.blit(t,(1400,800))
 
     def any_button_pushed(self):
         if (self.map1button.button_pushed == True):
@@ -399,6 +425,7 @@ class MenuScene:
         self.buttonupdate()
         self.barupdate()
         self.modebutton_update()
+        self.valuebutton_update()
         pass
 
     def draw(self):
@@ -407,7 +434,7 @@ class MenuScene:
         tex = SCREEN_SIZE_CENTER_X - text.get_rect().width / 2#La
         tey = 350
         text2 = self.font.render("Laser Color", True,(255,255,255))
-        pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(1600,900),50)
+        pygame.draw.circle(self.screen,(self.Data.getColorR(),self.Data.getColorG(),self.Data.getColorB()),(1550,930),50)
         self.screen.blit(text,(tex,tey))
         self.screen.blit(text2,(SCREEN_SIZE_CENTER_X - (text2.get_rect().width / 2), 1000))
 
@@ -419,7 +446,9 @@ class MenuScene:
         self.drawbar()
         self.drawlogo()
         self.drawmodebutton()
+        self.drawvaluebutton()
         self.modetext()
+        self.drawseconds()
         self.draw_mode_explain()
         self.urlbutton.draw()
 
@@ -437,6 +466,10 @@ class MenuScene:
         self.modebutton_timeattack.handle_events(event)
         self.modebutton_perfect.handle_events(event)
         self.modebutton_long.handle_events(event)
+
+        self.valuebutton_5.handle_events(event)
+        self.valuebutton_10.handle_events(event)
+        self.valuebutton_15.handle_events(event)
 
         pushed_map = self.any_button_pushed()
         if pushed_map is not None:
@@ -513,6 +546,99 @@ class MenuMapButton:
             self.Data.reset_maintimer()
             self.button_pushed = True
 
+class MenuValueButton:
+    def __init__(self,screen,data,seconds_value):
+        self.Data = data
+        self.screen = screen
+        self.font = pygame.font.Font(FONT_KAKUKAKU_PATH,70)
+        self.width = 100
+        self.height = 100
+        self.left_top_x = None
+        self.offset= 20
+        self.seconds_value = seconds_value
+        self.get_x_kizyun()
+
+        self.y_offset = 120
+        self.x1 = self.x_kizyun - int(self.width / 2)
+        self.y1 = SCREEN_SIZE_CENTER_Y + 200
+        self.x2 = self.x1 + self.width
+        self.y2 = self.y1 + self.height
+        self.r = 150
+        self.g = 150
+        self.b = 150
+        self.button_pushed = False
+        
+
+    def get_x_kizyun(self):
+        kizyun = 1300
+        if(self.seconds_value == 5):
+            self.x_kizyun =  kizyun + self.width * 1
+        if(self.seconds_value == 10):
+            self.x_kizyun = kizyun + self.width * 2 + self.offset * 1
+        if(self.seconds_value == 15):
+            self.x_kizyun = kizyun + self.width * 3 + self.offset * 2
+    
+    def check_on_mouse(self):
+        mx,my = pygame.mouse.get_pos()
+        if(self.x1 < mx and mx < self.x2) and (self.y1 < my and my < self.y2):
+            self.change_color("light")
+            return True
+        else:
+            self.change_color("dark")
+            return False
+
+    def change_color(self,str):
+        if(str == "yellow"):
+            self.r = 255
+            self.g = 200
+            self.b = 0
+        if(str == "light"):
+            self.r = 100
+            self.g = 100
+            self.b = 100
+        if(str == "dark"):
+            self.r = 50
+            self.g = 50
+            self.b = 50
+
+    def color_update(self):
+        if(self.Data.getSecondsMax() == self.seconds_value):
+            self.y1 = SCREEN_SIZE_CENTER_Y + 110
+            self.y2 = self.y1 + self.height
+            self.change_color("yellow")
+        elif(self.check_on_mouse()):
+            self.y1 = SCREEN_SIZE_CENTER_Y + 150
+            self.y2 = self.y1 + self.height
+            self.change_color("light")
+        else:
+            self.y1 = SCREEN_SIZE_CENTER_Y + 150
+            self.y2 = self.y1 + self.height
+            self.change_color("dark")
+
+    def draw_value(self):
+        value = self.seconds_value
+        str = f"{value}"
+        text = self.font.render(str,True,(0,0,0))
+        width_value = text.get_rect().width
+        height_value = text.get_rect().height
+        x = self.x1 + (self.width - width_value) / 2
+        y = self.y1 + (self.height - height_value) / 2
+        self.screen.blit(text,(x,y))
+        
+
+    def update(self):
+        self.check_on_mouse()
+        self.color_update()
+        pass
+    def draw(self):
+        if(self.Data.getMode() == "endless"):
+            pygame.draw.rect(self.screen,(self.r,self.g,self.b),(self.x1, self.y1,self.width,self.height))
+            self.draw_value()
+
+    def handle_events(self,event):
+        if ((event.type == MOUSEBUTTONDOWN) and (self.check_on_mouse())):
+            self.Data.setSecondsMax(self.seconds_value)
+
 class MenuModeButton:
     def __init__(self,screen,data,mode):
         self.Data = data
@@ -529,7 +655,7 @@ class MenuModeButton:
         self.x1 = self.x_kizyun - int(self.width / 2)
         self.y1 = SCREEN_SIZE_CENTER_Y + 120
         self.x2 = self.x1 + self.width
-        self.y2 = self.y1 + self.height - self.offset
+        self.y2 = self.y1 + self.height
         self.r = 150
         self.g = 150
         self.b = 150
@@ -572,13 +698,16 @@ class MenuModeButton:
 
     def color_update(self):
         if(self.Data.getMode() == self.mode):
-            self.y1 = SCREEN_SIZE_CENTER_Y + 80
+            self.y1 = SCREEN_SIZE_CENTER_Y + 55
+            self.y2 = self.y1 + self.height
             self.change_color("yellow")
         elif(self.check_on_mouse()):
-            self.y1 = SCREEN_SIZE_CENTER_Y + 120
+            self.y1 = SCREEN_SIZE_CENTER_Y + 85
+            self.y2 = self.y1 + self.height
             self.change_color("light")
         else:
-            self.y1 = SCREEN_SIZE_CENTER_Y + 120
+            self.y1 = SCREEN_SIZE_CENTER_Y + 85
+            self.y2 = self.y1 + self.height
             self.change_color("dark")
 
     def update(self):
@@ -586,7 +715,7 @@ class MenuModeButton:
         self.color_update()
         pass
     def draw(self):
-        pygame.draw.rect(self.screen,(self.r,self.g,self.b),(self.x1, self.y1,self.width,self.height -self.offset))
+        pygame.draw.rect(self.screen,(self.r,self.g,self.b),(self.x1, self.y1,self.width,self.height))
 
     def handle_events(self,event):
         if ((event.type == MOUSEBUTTONDOWN) and (self.check_on_mouse())):
@@ -670,7 +799,7 @@ class MenuColorBar:
     def make_perticles(self):
         new_perticle = Perticle(
             self.screen,
-            1600,900,self.Data)
+            1550,930,self.Data)
         self.perticles.append(new_perticle)
     
     def draw_perticles(self):
