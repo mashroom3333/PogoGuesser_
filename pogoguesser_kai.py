@@ -952,7 +952,7 @@ class ViwerScene: #推測画面クラス========================================
             self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
 
     def draw_subtimer(self):
-        if(self.Data.getMode() == "marathon"):
+        #if(self.Data.getMode() == "marathon"):
             timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
 
             timer_rect = timer_text.get_rect()
@@ -1204,7 +1204,7 @@ class MapScene: #マップクラス=============================================
             self.screen.blit(time_text, (SCREEN_SIZE[0] - self.maintimer_width_max, 20)) 
 
     def draw_subtimer(self):
-        if(self.Data.getMode() == "marathon"):
+        #if(self.Data.getMode() == "marathon"):
             timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
 
             timer_rect = timer_text.get_rect()
@@ -1445,7 +1445,7 @@ class AnswerScene:
             self.screen.blit(time_text, (SCREEN_SIZE[0] - self.maintimer_width_max, 20)) 
 
     def draw_subtimer(self):
-        if(self.Data.getMode() == "marathon"):
+        #if(self.Data.getMode() == "marathon"):
             timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
             timer_rect = timer_text.get_rect()
             self.screen.blit(timer_text,(SCREEN_SIZE_CENTER_X - timer_rect.width / 2,20))
@@ -1489,7 +1489,8 @@ class AnswerScene:
                 self.mapimg_scaled = None
                 self.mapimg = None
                 self.Data.addCurrentQ()
-                self.Data.reset_subtimer()
+                if (self.Data.getMode() == "marathon"):
+                    self.Data.reset_subtimer()
             else:
                 if (self.Data.getMode() == "marathon"):
                     self.finished = True
@@ -1625,6 +1626,7 @@ class Game:#=================================ゲームクラス=================
         if self.Data.subtimer_ms < 0 and not self.Data.timeover:
             self.Data.timeover = True
             self.Data.stop_maintimer()
+            self.Data.stop_subtimer()
             self.set_scene("result")
 
         if self.scene.next_scene:
