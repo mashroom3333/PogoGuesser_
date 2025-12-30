@@ -15,7 +15,7 @@ SCREEN_SIZE_Y = SCREEN_SIZE[1]
 SCREEN_SIZE_CENTER_X = SCREEN_SIZE_X // 2
 SCREEN_SIZE_CENTER_Y = SCREEN_SIZE_Y // 2
 
-def get_resource_path(relative_path):
+def get_resource_path(relative_path):#おまじない。で
     try:
         base_path = sys._MEIPASS
     except AttributeError:
@@ -51,7 +51,7 @@ LOGO_IMG_PATH = get_resource_path("assets/images/logo.png")
 URL_BUTTON_IMG_PATH = get_resource_path("assets/images/urlbutton.png")
 FONT_TIMER_PATH = get_resource_path("assets/fonts/digitalism.ttf")
 DISTANCE_MAX = 100
-DISTANCE_MAX_FOR_PERFECT = 30
+DISTANCE_MAX_FOR_PERFECT = 20
 
 
 URL = "https://store.steampowered.com/app/688130/Pogostuck_Rage_With_Your_Friends/"
@@ -292,6 +292,7 @@ class MenuScene:
         self.Data = data
         self.screen = screen
         self.font = pygame.font.Font(None,60)
+        self.font_mini = pygame.font.Font(None,30)
         self.map = None
         self.finished = False
         self.next_scene = None
@@ -310,7 +311,7 @@ class MenuScene:
         self.modebutton_normal = MenuModeButton(self.screen,self.Data,"normal")
         self.modebutton_timeattack = MenuModeButton(self.screen,self.Data,"timeattack")
         self.modebutton_perfect = MenuModeButton(self.screen,self.Data,"perfect")
-        self.modebutton_long = MenuModeButton(self.screen,self.Data,"marathon")
+        self.modebutton_long = MenuModeButton(self.screen,self.Data,"endless")
 
 
     def buttonupdate(self):
@@ -366,17 +367,33 @@ class MenuScene:
     def modetext(self): 
         mode = self.Data.getMode()
         if(mode == "normal"):#あほくせーｗ
-            mode = "Normal"  #頭文字大文字嫌いなんだよな
+            mode = "Normal"  #頭文字小文字で統一しないとわからなくなるから嫌いなんだよな
         if(mode == "timeattack"):
             mode = "TimeAttack"
         if(mode == "perfect"):
             mode = "Perfect"
-        if(mode == "marathon"):
-            mode = "Marathon"
+        if(mode == "endless"):
+            mode = "Endless"
         t = f"Mode: {mode}"
         text = self.font.render(t,True,(255,255,255))
         tx = SCREEN_SIZE_CENTER_X - (text.get_rect().width / 2)
         self.screen.blit(text,(tx,800))
+        
+    def draw_mode_explain(self): 
+        mode = self.Data.getMode()
+
+        if(mode == "normal"):
+            mode = "\"Common mode for beginners.\"" 
+        elif(mode == "timeattack"):
+            mode = "\"Get a better time in 10 questions.\""
+        elif(mode == "perfect"):
+            mode = "\"Only distances under 20 is allowed.\""
+        elif(mode == "endless"):
+            mode = "\"Go for the longest streak!\""
+        t = f"{mode}"
+        text = self.font_mini.render(t,True,(255,255,255))
+        tx = SCREEN_SIZE_CENTER_X - (text.get_rect().width / 2)
+        self.screen.blit(text,(tx,850))
         
     def update(self):
         self.buttonupdate()
@@ -394,12 +411,16 @@ class MenuScene:
         self.screen.blit(text,(tex,tey))
         self.screen.blit(text2,(SCREEN_SIZE_CENTER_X - (text2.get_rect().width / 2), 1000))
 
+        t = self.font_mini.render("*Loading lag may occur when you load the map for the fist time.",True,(255,255,255))
+        self.screen.blit(t,(10,1050))
+
         self.draw
         self.drawbutton()
         self.drawbar()
         self.drawlogo()
         self.drawmodebutton()
         self.modetext()
+        self.draw_mode_explain()
         self.urlbutton.draw()
 
     def handle_events(self,event):
@@ -426,7 +447,7 @@ class MenuScene:
             self.Data.resetCurrentQues()
             self.Data.reset_maintimer()
             self.Data.resetCorrectAns()
-            if(self.Data.getMode() == "marathon"):
+            if(self.Data.getMode() == "endless"):
                 self.Data.reset_subtimer()
                 self.Data.timeover = False
 
@@ -523,7 +544,7 @@ class MenuModeButton:
             self.x_kizyun = kizyun + self.width * 2 + self.offset * 1
         if(self.mode == "perfect"):
             self.x_kizyun = kizyun + self.width * 3 + self.offset * 2
-        if(self.mode == "marathon"):
+        if(self.mode == "endless"):
             self.x_kizyun = kizyun + self.width * 4 + self.offset * 3
     
     def check_on_mouse(self):
@@ -536,18 +557,25 @@ class MenuModeButton:
             return False
 
     def change_color(self,str):
-        if(str == "light"):
+        if(str == "yellow"):
             self.r = 255
             self.g = 200
             self.b = 0
+        if(str == "light"):
+            self.r = 100
+            self.g = 100
+            self.b = 100
         if(str == "dark"):
             self.r = 50
             self.g = 50
             self.b = 50
 
-    def is_mode_chosed(self):
+    def color_update(self):
         if(self.Data.getMode() == self.mode):
             self.y1 = SCREEN_SIZE_CENTER_Y + 80
+            self.change_color("yellow")
+        elif(self.check_on_mouse()):
+            self.y1 = SCREEN_SIZE_CENTER_Y + 120
             self.change_color("light")
         else:
             self.y1 = SCREEN_SIZE_CENTER_Y + 120
@@ -555,7 +583,7 @@ class MenuModeButton:
 
     def update(self):
         self.check_on_mouse()
-        self.is_mode_chosed()
+        self.color_update()
         pass
     def draw(self):
         pygame.draw.rect(self.screen,(self.r,self.g,self.b),(self.x1, self.y1,self.width,self.height -self.offset))
@@ -943,7 +971,7 @@ class ViwerScene: #推測画面クラス========================================
 
                 
     def draw_maintimer(self):
-        if(not (self.Data.getMode() == "marathon")):
+        if(not (self.Data.getMode() == "endless")):
             time_text = self.font_maintimer.render(self.Data.get_time_str(), True, (0, 255, 0))
             
             timer_rect = time_text.get_rect()
@@ -952,7 +980,7 @@ class ViwerScene: #推測画面クラス========================================
             self.screen.blit(time_text, (SCREEN_SIZE[0] - self.timer_width_max, 20)) 
 
     def draw_subtimer(self):
-        #if(self.Data.getMode() == "marathon"):
+        if(self.Data.getMode() == "endless"):
             timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
 
             timer_rect = timer_text.get_rect()
@@ -985,7 +1013,7 @@ class ViwerScene: #推測画面クラス========================================
         self.screen.blit(text_mode,(30,tm_height + 30))
         
 
-        if (not self.Data.getMode() == "marathon"):
+        if (not self.Data.getMode() == "endless"):
             ima = self.Data.current_question
             max = self.Data.max_question
             nokori_game_counter =ima
@@ -1009,7 +1037,7 @@ class ViwerScene: #推測画面クラス========================================
         pygame.draw.line(self.screen,(0,255,0),(x,y1),(x,y2),3)
 
     def draw_streak(self):
-        if(self.Data.getMode() == "marathon"):
+        if(self.Data.getMode() == "endless"):
             y = 135
             streak_t = self.font.render("streaks:",True,(255,255,255))
             streak_width = streak_t.get_rect().width
@@ -1029,7 +1057,7 @@ class ViwerScene: #推測画面クラス========================================
             if(self.Data.isQuestionContinue()):
                 None
             else:
-                if(not (self.Data.getMode() == "marathon")):
+                if(not (self.Data.getMode() == "endless")):
                     self.question_finished == True
                     self.finished = True
                     self.Data.resetCurrentQues()
@@ -1069,6 +1097,7 @@ class MapScene: #マップクラス=============================================
         self.screen = screen
         self.sw,self.sh = SCREEN_SIZE
         self.font = pygame.font.Font(None,60)
+        self.font_big = pygame.font.Font(None,150)
         self.font_mini = pygame.font.Font(None,40)
         self.font_maintimer = pygame.font.Font(None,100)
         self.finished = False
@@ -1195,7 +1224,7 @@ class MapScene: #マップクラス=============================================
         self.screen.blit(t4,[0,SCREEN_SIZE[1]-60])
 
     def draw_maintimer(self):
-        if(not (self.Data.getMode() == "marathon")):
+        if(not (self.Data.getMode() == "endless")):
             time_text = self.font_maintimer.render(self.Data.get_time_str(), True, (0, 255, 0))
             
             timer_rect = time_text.get_rect()
@@ -1204,7 +1233,7 @@ class MapScene: #マップクラス=============================================
             self.screen.blit(time_text, (SCREEN_SIZE[0] - self.maintimer_width_max, 20)) 
 
     def draw_subtimer(self):
-        #if(self.Data.getMode() == "marathon"):
+        if(self.Data.getMode() == "endless"):
             timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
 
             timer_rect = timer_text.get_rect()
@@ -1436,7 +1465,7 @@ class AnswerScene:
         self.screen.blit(td,[SCREEN_SIZE_CENTER_X- (w/2),SCREEN_SIZE_CENTER_Y + 250])
 
     def draw_maintimer(self):
-        if(not (self.Data.getMode() == "marathon")):
+        if(not (self.Data.getMode() == "endless")):
             time_text = self.font_maintimer.render(self.Data.get_time_str(), True, (0, 255, 0))
             
             timer_rect = time_text.get_rect()
@@ -1445,7 +1474,7 @@ class AnswerScene:
             self.screen.blit(time_text, (SCREEN_SIZE[0] - self.maintimer_width_max, 20)) 
 
     def draw_subtimer(self):
-        #if(self.Data.getMode() == "marathon"):
+        if (self.Data.getMode() == "endless"):
             timer_text = self.font_maintimer.render(self.Data.get_subtime_str(), True,(255,0,0))
             timer_rect = timer_text.get_rect()
             self.screen.blit(timer_text,(SCREEN_SIZE_CENTER_X - timer_rect.width / 2,20))
@@ -1489,10 +1518,10 @@ class AnswerScene:
                 self.mapimg_scaled = None
                 self.mapimg = None
                 self.Data.addCurrentQ()
-                if (self.Data.getMode() == "marathon"):
+                if (self.Data.getMode() == "endless"):
                     self.Data.reset_subtimer()
             else:
-                if (self.Data.getMode() == "marathon"):
+                if (self.Data.getMode() == "endless"):
                     self.finished = True
                     self.next_scene = "result"
                 else:
@@ -1513,7 +1542,7 @@ class ResultScene:
         self.next_scene = None
 
     def draw_maintimer(self):
-        if(not (self.Data.getMode() == "marathon")):
+        if(not ((self.Data.getMode() == "endless") or (self.Data.getMode() == "normal"))):
             time_text = self.font.render(self.Data.get_time_str(), True, (0, 255, 0))
             timer_rect = time_text.get_rect()
             x = SCREEN_SIZE_CENTER_X - (timer_rect.width //2)
@@ -1530,20 +1559,32 @@ class ResultScene:
         self.screen.blit(t,(x,y))
 
     def draw_how_many(self):
+        y_offset = 100 #タイマー消したせいで全部上に挙げることになって面倒くさいからこれ←
         if(self.Data.getMode() == "normal"):
             correct = self.Data.getCorrectAnswer()
             max = self.Data.getMaxQ()
+            t1 = self.font.render("Correct:",True,(255,255,255))
+            t1x = SCREEN_SIZE_CENTER_X - (t1.get_rect().width/ 2)
+            t1y = SCREEN_SIZE_CENTER_Y - (t1.get_rect().height/2) + 100 - y_offset
+            self.screen.blit(t1,(t1x,t1y))
             
-            str = f"{correct} / {max}"
-            t = self.font_big.render(str,True,(255,255,255))
+            str = f"{correct}"
+            t = self.font_very_big.render(str,True,(0,255,0))
             t_rect = t.get_rect()
             x = SCREEN_SIZE_CENTER_X - (t_rect.width//2)
-            y = SCREEN_SIZE_CENTER_Y- (t_rect.height //2) + 100
+            y = t1y + 100 
             self.screen.blit(t,(x,y))
             
+            str = f"/{max}"
+            t = self.font_big.render(str,True,(255,255,255))
+            t_rect2 = t.get_rect()
+            x2 = SCREEN_SIZE_CENTER_X - (t_rect.width//2) + t_rect.width + 30
+            y2 = t1y + 100 + 50
+            self.screen.blit(t,(x2,y2))
+
     def draw_streak(self):
-        if(self.Data.getMode() == "marathon"):
-            streak_t = self.font.render("streaks:",True,(255,255,255))
+        if(self.Data.getMode() == "endless"):
+            streak_t = self.font.render("Streaks:",True,(255,255,255))
             streak_width = streak_t.get_rect().width
             streak_height = streak_t.get_rect().height
             st_x = SCREEN_SIZE_CENTER_X - (streak_width // 2)
